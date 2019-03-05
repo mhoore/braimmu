@@ -547,7 +547,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
       else if (v_prop[i] < 256) {
         type[i] = PAR_type;
-        agent[neu][i][0] = v_prop[i]/256 * 6.7e7;
+        agent[neu][i][0] = (v_prop[i] - 120)/136 * 1.0e8;
       }
     }
 

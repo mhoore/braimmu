@@ -90,8 +90,10 @@ class Brain {
   double ds,df; // clearance rate of sAb and fAb by microglia
   double es; // rate of sAb efflux in CSF
   double c_mic, vel_mic; // velocity of microglia (speed of chemotaxis)
-  double dn; // neuronal death rate due to astogliosis
+  double dna; // neuronal death rate due to astogliosis
+  double dnf; // neuronal death rate due to fibrillization
   double Ha; // Michaelis-Menten constant for astrogliosis
+  double ka; // rate of astrogliosis
 
   MPI_Comm world;
 

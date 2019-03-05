@@ -654,6 +654,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
       dsize++;
+    else if (!arg[c].compare("me"))
+      dsize++;
     else if (brn->input->find_agent(arg[c]) >= 0)
       dsize++;
     else {
@@ -677,6 +679,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
       ag_id = brn->input->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
         send_buf[c++] = ubuf(type[i]).d;
+      else if (!arg[aid].compare("me"))
+        send_buf[c++] = ubuf(me).d;
       else if (ag_id >= 0)
         send_buf[c++] = agent[ag_id][i][0];
       aid++;
@@ -735,11 +739,14 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
             if (!arg[aid].compare("type"))
               data[cnim] = (float) ubuf(recv_buf[c++]).i;
+            else if (!arg[aid].compare("me"))
+              data[cnim] = (float) ubuf(recv_buf[c++]).i;
             else if (ag_id >= 0)
               data[cnim] = (float) recv_buf[c++];
 
-            //printf("proc %i: HERE0 output itag=%i, data[%i, %i, %i, %i] = %g \n",
-                //   brn->me, cnim, ii,jj,kk,aid-3, data[cnim]);
+            //if (!arg[aid].compare("me"))
+             // printf("proc %i: HERE0 output itag=%i, data[%i, %i, %i, %i] = %g \n",
+               //      brn->me, cnim, ii,jj,kk,aid-3, data[cnim]);
             //printf("proc %i: HERE1 output itag=%i, data[%i, %i, %i, %i] = %g \n",
               //     brn->me, itag, i,j,k,h, (float) ptr[c]);
 
