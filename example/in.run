@@ -1,0 +1,44 @@
+## Input file
+## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
+
+partition 3 4 1
+num_conn_max 10 # maximum number of bond connections
+
+timestep 0.001 # day
+nevery 10 # nevery steps for bond connections
+box -5.0e4 5.0e4  -5.0e4 5.0e4  -5.0e4 5.0e4 # xlo xhi  ylo yhi  zlo zhi (um)
+
+voxel_size 1.0e3 # um (Note: minimum voxel_size is 100 um in order to include 70 neurons in itself.)
+
+parameters diff_sAb 2.0e7 # um2/day
+parameters kp 7.8e0 # 1/uM . 1/day
+parameters kn 2.1e-3 # 1/uM . 1/day
+parameters ds 5.3e-9 # mL/day
+parameters df 1.8e-10 # mL/day
+parameters es 1.9 # 1/day
+parameters diff_mic 2.0e4 # um2/day
+parameters sens_s 2.2e3 # um/day per uM/um
+parameters sens_f 2.2e3 # um/day per uM/um
+parameters dna 2.2e-4 # neuronal death rate due to astrogliosis (1/day)
+parameters dnf 2.2e-4 # neuronal death rate due to fibrillization (1/day . 1/uM)
+parameters Ha 3.0e5 # Michaelis-Menten constant for astrogliosis (uM/mL)
+parameters ka 0.03 # astroglyiosis rate (1/day)
+
+parameters neu 1.0e8 # 1/mL
+parameters mic 5.0e6 # 1/mL
+parameters sAb 0.0 # uM 
+parameters fAb 0.0 # uM
+parameters cir 4.0e-11 # neuronal Abeta secretion (mol/day/neuron)
+parameters ast 0.0 # astrogliosis
+
+read_mri mni152_2009bet.nii
+
+balance y 20
+
+## outputs
+dump mri 100000 dump. mic neu sAb fAb ast type
+statistics 1000 stat.dat
+
+log 1000
+run 6000000
+setup

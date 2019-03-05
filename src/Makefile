@@ -4,7 +4,7 @@ CC=mpicxx
 CCFLAGS=-g -O3 -std=c++11
 LDFLAGS=
 OBJ=main.o memory.o brain.o input.o init.o comm.o run.o output.o region.o nifti1_io.o znzlib.o
-EXE=brain.exe
+EXE=braimmu.exe
 
 all: $(EXE)
 
