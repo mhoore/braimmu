@@ -212,7 +212,7 @@ def prune_data():
 ## plots
 def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     contour_levels = 100
-    fig = pl.figure(figsize=(14,14))
+    fig = pl.figure(figsize=(15,14))
     ax = fig.add_subplot(111)
     
     xsep = 1.
@@ -225,13 +225,13 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
 
     ## dim0
     bx = lx[0] + xsep
-    by = lx[2] + ysep
-    yls = np.linspace(bx,bx+lx[1],Nx[1])
-    xls = np.linspace(by,by+lx[2],Nx[2])
+    by = lx[1] + ysep
+    xls = np.linspace(bx,bx+lx[1],Nx[1])
+    yls = np.linspace(by,by+lx[2],Nx[2])
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((y[0]+by,x[0]+bx), Zscore[0], (x_gr, y_gr), method='cubic')
+    z_gr = griddata((x[0]+bx,y[0]+by), Zscore[0], (x_gr, y_gr), method='cubic')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
@@ -242,7 +242,7 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
 
     ## dim1
     bx = 0.0
-    by = 0.0
+    by = lx[1] + ysep
     xls = np.linspace(bx,bx+lx[0],Nx[0])
     yls = np.linspace(by,by+lx[2],Nx[2])
     x_gr, y_gr = np.meshgrid(xls, yls)
@@ -259,7 +259,7 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     
     ## dim2
     bx = 0.0
-    by = lx[2] + ysep
+    by = 0.0
     xls = np.linspace(bx,bx+lx[0],Nx[0])
     yls = np.linspace(by,by+lx[1],Nx[1])
     x_gr, y_gr = np.meshgrid(xls, yls)
@@ -275,18 +275,18 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     cs.cmap.set_over('k')
     
     ## section  lines
-    ax.plot([xsep,lx[0]],[sec[2]*dx[2],sec[2]*dx[2]],'k-',lw=0.5)
-    ax.plot([lx[0]+sec[2]*dx[2],lx[0]+sec[2]*dx[2]],[lx[2]+ysep,lx[2]+ysep+lx[1]],'k-',lw=0.5)
-    ax.plot([sec[0]*dx[0],sec[0]*dx[0]],[ysep,lx[2]+lx[1]+ysep],'k-',lw=0.5)
-    ax.plot([xsep,lx[0]+lx[2]+xsep],[lx[2]+ysep+sec[1]*dx[1],lx[2]+ysep+sec[1]*dx[1]],'k-',lw=0.5)
+    ax.plot([xsep,lx[0]],[sec[1]*dx[1], sec[1]*dx[1]],'k-',lw=0.5)
+    ax.plot([xsep,lx[0] + xsep + lx[1]],[lx[1] + ysep + sec[2]*dx[2], lx[1] + ysep + sec[2]*dx[2]],'k-',lw=0.5)
+    ax.plot([sec[0]*dx[0],sec[0]*dx[0]],[ysep,lx[1] + lx[2] + ysep],'k-',lw=0.5)
+    ax.plot([lx[0] + xsep + sec[1]*dx[1],lx[0] + xsep + sec[1]*dx[1]],[lx[1] + ysep,lx[1] + ysep + lx[2]],'k-',lw=0.5)
 
     # scale bar
-    ax.plot([12,108],[5,5],'k-',lw=10.0)
-    fig.text(0.2,0.06,r'$\rm 100 ~mm$')
+    ax.plot([12 + 200,108 + 200],[lx[1] - 14.0*ysep,lx[1] - 14.0*ysep],'k-',lw=10.0)
+    fig.text(0.67,0.495,r'$\rm 100 ~mm$')
 
     # ax.plot(x, y, 'ko', markersize=4)
 
-    ax.set_xlim(0,lx[0] + lx[2] + xsep)
+    ax.set_xlim(0,lx[0] + lx[1] + xsep)
     ax.set_ylim(0,lx[1] + lx[2] + ysep)
 
     #ax.tick_params(axis='x',which='minor',bottom='on')
@@ -315,19 +315,19 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     #ax.set_yticklabels([])
 
     #if (i_x == n_X - 1 and i_y == 0) :
-    cbar_ax = fig.add_axes([0.92,0.15,0.02,0.7])
+    cbar_ax = fig.add_axes([0.93,0.15,0.02,0.7])
     cbar = pl.colorbar(cs,cax=cbar_ax)
     cbar.set_ticks([cut_min,cut_max])
     #mticks = cbar.norm([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10,20])
     #cbar.ax.yaxis.set_ticks(mticks, minor=True)
     #cbar.set_ticklabels([0, r'%.2e' % np.max(z)])
     cbar.ax.set_yticklabels([r'%.2e' % cut_min, r'%.2e' % cut_max],rotation=90)
-    fig.text(0.95,0.5,lbl, rotation='vertical')
+    fig.text(0.96,0.5,lbl, rotation='vertical')
     
     ax.set_aspect('equal')
 
     # inset
-    ax2 = fig.add_axes([0.57, 0.13, 0.3, 0.25], facecolor=(1.,1.,1.))
+    ax2 = fig.add_axes([0.52, 0.13, 0.38, 0.28], facecolor=(1.,1.,1.))
     ax2.hist(z, histtype='stepfilled',bins=50,density=True, fc='#CCCCCC', alpha=0.5, edgecolor='black', linewidth=1.2)  # bins='auto'
     ax2.set_xlabel(ag_names[me])
     #ax2.set_ylabel(r'$\rm probability$')
