@@ -115,8 +115,8 @@ void Run::derivatives(Brain *brn) {
       agent[sAb][j][1] += dum;
 
       // only in parenchyma
-      if (type[i] != PAR_type) continue;
-      if (type[j] != PAR_type) continue;
+      if (type[i] != WM_type && type[i] != GM_type) continue;
+      if (type[j] != WM_type && type[j] != GM_type) continue;
 
       del_fAb = agent[fAb][i][0] - agent[fAb][j][0];
       del_mic = agent[mic][i][0] - agent[mic][j][0];

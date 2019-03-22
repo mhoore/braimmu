@@ -159,9 +159,9 @@ void N2P::settings () {
   fprintf(fw, "//camera and lights \n");
   fprintf(fw, "camera{ orthographic angle  %g \n", CAM_ANGLE);
   fprintf(fw, "  location <%g, %g, %g> \n",
-          0.5 * lbox[0] + cam[0] * 2.0 * lbox[0],
-          0.5 * lbox[0] + cam[0] * 2.0 * lbox[0],
-          0.5 * lbox[0] + cam[0] * 2.0 * lbox[0]);
+          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0],
+          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0],
+          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0]);
 
   fprintf(fw, "  look_at  <%g, %g, %g> \n",
           look[0],
@@ -267,7 +267,7 @@ void N2P::file_write () {
         for (i=0; i<nim->dim[1]; i++) {
 
           //if (i != sec_id || data[c][dsize-1] == 0) {
-          if (data[c][dsize-1] == 0) {
+          if (data[c][dsize-1] < 0) {
             c++;
             continue;
           }
@@ -291,6 +291,29 @@ void N2P::file_write () {
           grayscale = (data[c][me] - minval) * coef - 1.0;
           jet(grayscale, rgb);
 
+/*          if (data[c][me] == 0) {
+            rgb[0] = 0.0;
+            rgb[1] = 0.0;
+            rgb[2] = 0.4;
+          }
+
+          else if (data[c][me] == 1) {
+            rgb[0] = 0.9;
+            rgb[1] = 0.9;
+            rgb[2] = 0.0;
+          }
+
+          else if (data[c][me] == 2) {
+            rgb[0] = 0.8;
+            rgb[1] = 0.1;
+            rgb[2] = 0.0;
+          }
+*/
+          //if (data[c][-1] >= 0) {
+          //  printf("%g, %g, %g --> %g, c=%i, %g \n",
+          //        x[c][0], x[c][1], x[c][2], data[c][me],c, data[c][-1]);
+          //  getchar();
+          //}
           fprintf(fw, "box{<%g, %g, %g>, <%g, %g, %g> \
                   texture{pigment{color rgbft <%g, %g, %g, %g, %g>} } }\n",
                   x0, y0, z0, x1, y1, z1, rgb[0], rgb[1], rgb[2], TRANS, FILTER);

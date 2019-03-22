@@ -6,6 +6,8 @@
 #include "brain.h"
 #include "init.h"
 
+#include <stdint.h>
+
 using namespace std;
 using namespace brain_NS;
 
@@ -15,11 +17,20 @@ Init::Init() {
 
 /* ----------------------------------------------------------------------*/
 Init::~Init() {
+  int i;
+
+  for (i=0; i<mri_arg.size(); i++) {
+    mri_arg[i].clear();
+  }
+
+  mri_arg.clear();
 }
 
 /* ----------------------------------------------------------------------*/
 void Init::setup(Brain *brn) {
   int me = brn->me;
+
+  read_mri(brn);
 
   if (!me)
     printf("Setup: setting voxels ... \n");
@@ -49,6 +60,85 @@ void Init::setup(Brain *brn) {
   if (!me)
     printf("Setting neighbors ... \n");
   neighbor(brn);
+
+}
+
+/* ----------------------------------------------------------------------
+ * Read all mri files, respectively in the order of input
+ * ----------------------------------------------------------------------*/
+void Init::read_mri(Brain *brn) {
+  int i,j;
+  int narg;
+
+  // set the main nifti image based on the first mri input
+  brn->nim = nifti_image_read(mri_arg[0][1].c_str(),1);
+
+  for (i=0; i<mri_arg.size(); i++) {
+    narg = mri_arg[i].size();
+
+    if (narg < 3){
+      printf("Error: read_mri has fewer arguments than required. \n");
+      exit(1);
+    }
+
+    if (!mri_arg[i][0].compare("restart")) {
+      if (mri_arg.size() > 1) {
+        printf("Error: read_mri restart should be used alone. Remove other read_mri commands. \n");
+        exit(1);
+      }
+    }
+
+    else if (!mri_arg[i][0].compare("all")) {
+      if (mri_arg.size() > 1) {
+        printf("Error: read_mri all should be used alone. Remove other read_mri commands. \n");
+        exit(1);
+      }
+    }
+
+    else if (mri_arg[i][0].compare("wm") &&
+             mri_arg[i][0].compare("gm") &&
+             mri_arg[i][0].compare("csf")) {
+      printf("Error: read_mri unknown keyword. keywords: wm, gm, csf, all, restart. \n");
+      exit(1);
+    }
+
+    nifti_image *nim_tmp;
+    nim_tmp = NULL;
+
+    /* read the nifti header, and optionally image data */
+    nim_tmp = nifti_image_read(mri_arg[i][1].c_str(),0);
+    if(!nim_tmp) {
+      printf("Error: read_mri for %s - nifti image %s not readable. \n",
+             mri_arg[i][0].c_str(), mri_arg[i][1].c_str());
+      exit(1);
+    }
+
+    if (!brn->me) {
+      printf("##################### \n");
+      printf("NIFTI image %s is read. \n", mri_arg[i][1].c_str());
+      printf("NIFTI image properties: ");
+      printf("ndim = %i \n", nim_tmp->ndim);
+      for (int i=1; i<8; i++)
+        printf("dim[%i] = %i, pixdim[i] = %g \n",
+               i,nim_tmp->dim[i],i,nim_tmp->pixdim[i]);
+      printf("nvox = %lli \n", nim_tmp->nvox);
+      printf("nbyper = %i \n", nim_tmp->nbyper);
+      printf("datatype = %i \n", nim_tmp->datatype);
+
+      printf("calmin = %g, calmax = %g \n", nim_tmp->cal_min, nim_tmp->cal_max);
+      printf("toffset = %g \n", nim_tmp->toffset);
+
+      printf("xyz_units = %i, time_units = %i \n", nim_tmp->xyz_units, nim_tmp->time_units);
+      printf("nifti_type = %i \n", nim_tmp->nifti_type);
+
+      printf("intent_code = %i \n", nim_tmp->intent_code);
+
+      printf("description: %s \n", nim_tmp->descrip);
+      printf("##################### \n");
+    }
+
+    nifti_image_free(nim_tmp);
+  }
 
 }
 
@@ -435,21 +525,6 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
   int i,j,k,h;
 
-  if (nim->datatype == DT_UINT8)
-    ptr8 = (uint8_t *) nim->data;
-  else if (nim->datatype == DT_INT16)
-    ptr16 = (int16_t *) nim->data;
-  else if (nim->datatype == DT_INT32)
-    ptr32 = (int32_t *) nim->data;
-  else if (nim->datatype == DT_FLOAT32)
-    ptrf = (float *) nim->data;
-  else if (nim->datatype == DT_FLOAT64)
-    ptrd = (double *) nim->data;
-  else {
-    printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim->datatype);
-    exit(1);
-  }
-
   int nlocal = brn->nlocal;
   int nall = brn->nall;
 
@@ -461,7 +536,6 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   double vlen_1 = brn->vlen_1;
 
   int ii,jj,kk,vid;
-  int c = 0;
   double dum;
   tagint itag;
 
@@ -473,90 +547,14 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   else if (nim->xyz_units == NIFTI_UNITS_MICRON)
     conver_fac = 1.0;
 
-  // go through the nifti_image data and find the corresponding voxel
-  if (nim->ndim == 3) {
+  // set all voxel types as EMP_type
+  for (i=0; i<nall; i++)
+    type[i] = EMP_type;
 
-    double *v_prop;
-    int *n_prop;
-
-    brn->memory->create(v_prop,nall,"init:v_prop");
-    brn->memory->create(n_prop,nall,"init:n_prop");
-
-    for (i=0; i<nall; i++) {
-      v_prop[i] = 0.0;
-      n_prop[i] = 0;
-    }
-
-    for (k=0; k<nim->dim[3]; k++) {
-      dum = nim->pixdim[3] * k * conver_fac;
-      kk = (int) (dum * vlen_1);
-
-      for (j=0; j<nim->dim[2]; j++) {
-        dum = nim->pixdim[2] * j * conver_fac;
-        jj = (int) (dum * vlen_1);
-
-        for (i=0; i<nim->dim[1]; i++) {
-          dum = nim->pixdim[1] * i * conver_fac;
-          ii = (int) (dum * vlen_1);
-
-          itag = find_me(brn,ii,jj,kk);
-          if (itag == -1) {
-            //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
-            c++;
-            continue;
-          }
-          vid = map[itag];
-
-          // if it is in the partition
-          if (vid != -1) {
-            if (nim->datatype == DT_UINT8)
-              v_prop[vid] += (double) ptr8[c];
-            else if (nim->datatype == DT_INT16)
-              v_prop[vid] += (double) ptr16[c];
-            else if (nim->datatype == DT_INT32)
-              v_prop[vid] += (double) ptr32[c];
-            else if (nim->datatype == DT_FLOAT32)
-              v_prop[vid] += (double) ptrf[c];
-            else if (nim->datatype == DT_FLOAT64)
-              v_prop[vid] += (double) ptrd[c];
-            n_prop[vid]++;
-          }
-
-          c++;
-        }
-      }
-    }
-
-    // set voxel properties based on the nifti_image data
-    for (i=0; i<nlocal; i++) {
-      if (n_prop[i] > 0)
-        v_prop[i] /= n_prop[i];
-
-      // criteria
-      if (v_prop[i] < 1) {
-        type[i] = EMP_type;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          agent[ag_id][i][0] = 0.0;
-      }
-
-      else if (v_prop[i] < 140) {
-        type[i] = CSF_type;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          agent[ag_id][i][0] = 0.0;
-      }
-
-      else if (v_prop[i] < 256) {
-        type[i] = PAR_type;
-        agent[neu][i][0] = (v_prop[i] - 120)/136 * 1.0e8;
-      }
-    }
-
-    brn->memory->destroy(v_prop);
-    brn->memory->destroy(n_prop);
-
-  }
-
-  else if (nim->ndim == 5) {
+  /* -------------------------------------------------------
+   * set from restart
+   * ------------------------------------------------------- */
+  if (!mri_arg[0][0].compare("restart")) {
     double **v_prop;
     int **n_prop;
 
@@ -569,6 +567,23 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         n_prop[i][j] = 0;
       }
 
+    // set pointers to data
+    if (nim->datatype == DT_UINT8)
+      ptr8 = (uint8_t *) nim->data;
+    else if (nim->datatype == DT_INT16)
+      ptr16 = (int16_t *) nim->data;
+    else if (nim->datatype == DT_INT32)
+      ptr32 = (int32_t *) nim->data;
+    else if (nim->datatype == DT_FLOAT32)
+      ptrf = (float *) nim->data;
+    else if (nim->datatype == DT_FLOAT64)
+      ptrd = (double *) nim->data;
+    else {
+      printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim->datatype);
+      exit(1);
+    }
+
+    int c = 0;
     for (h=0; h<nim->dim[5]; h++) {
       for (k=0; k<nim->dim[3]; k++) {
         dum = nim->pixdim[3] * k * conver_fac;
@@ -649,6 +664,167 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     brn->memory->destroy(n_prop);
 
   }
+
+  /* -------------------------------------------------------
+   * if there is no restart, go through the nifti_image data
+   * and find the corresponding voxel.
+   * ------------------------------------------------------- */
+  else {
+    if (nim->ndim != 3) {
+      printf("Error: nifti file should have 3 dimensions. ndim = %i \n",nim->ndim);
+      exit(1);
+    }
+
+    double max_val, thres_val;
+
+    double *v_prop;
+    int *n_prop;
+
+    brn->memory->create(v_prop,nall,"init:v_prop");
+    brn->memory->create(n_prop,nall,"init:n_prop");
+
+    // go though all mri files
+    for (int tis=0; tis<mri_arg.size(); tis++) {
+      nifti_image *nim_tmp = NULL;
+
+      nim_tmp = nifti_image_read(mri_arg[tis][1].c_str(),1);
+      thres_val = stof(mri_arg[tis][2]);
+      max_val = stof(mri_arg[tis][3]);
+
+      // set pointers to data
+      if (nim_tmp->datatype == DT_UINT8)
+        ptr8 = (uint8_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_INT16)
+        ptr16 = (int16_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_INT32)
+        ptr32 = (int32_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_FLOAT32)
+        ptrf = (float *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_FLOAT64)
+        ptrd = (double *) nim_tmp->data;
+      else {
+        printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim_tmp->datatype);
+        exit(1);
+      }
+
+      for (i=0; i<nall; i++) {
+        v_prop[i] = 0.0;
+        n_prop[i] = 0;
+      }
+
+      int c = 0;
+      for (k=0; k<nim_tmp->dim[3]; k++) {
+        dum = nim_tmp->pixdim[3] * k * conver_fac;
+        kk = (int) (dum * vlen_1);
+
+        for (j=0; j<nim_tmp->dim[2]; j++) {
+          dum = nim_tmp->pixdim[2] * j * conver_fac;
+          jj = (int) (dum * vlen_1);
+
+          for (i=0; i<nim_tmp->dim[1]; i++) {
+            dum = nim_tmp->pixdim[1] * i * conver_fac;
+            ii = (int) (dum * vlen_1);
+
+            itag = find_me(brn,ii,jj,kk);
+            if (itag == -1) {
+              //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
+              c++;
+              continue;
+            }
+            vid = map[itag];
+
+            double uint8coef = 1.0 / ((double) UINT8_MAX);
+            double int16coef = 1.0 / ((double) INT16_MAX - (double) INT16_MIN);
+            double int32coef = 1.0 / ((double) INT32_MAX - (double) INT32_MIN);
+            // if it is in the partition
+            if (vid != -1) {
+              if (nim_tmp->datatype == DT_UINT8)
+                v_prop[vid] += (double) ptr8[c] * uint8coef;
+              else if (nim_tmp->datatype == DT_INT16)
+                v_prop[vid] += ((double) (ptr16[c] - INT16_MIN)) * int16coef;
+              else if (nim_tmp->datatype == DT_INT32)
+                v_prop[vid] += ((double) (ptr32[c] - INT32_MIN)) * int32coef;
+              else if (nim_tmp->datatype == DT_FLOAT32)
+                v_prop[vid] += (double) ptrf[c];
+              else if (nim_tmp->datatype == DT_FLOAT64)
+                v_prop[vid] += (double) ptrd[c];
+              n_prop[vid]++;
+
+              //printf("HERE: proc %i: vid = %i, v_prop[vid] = %g, ptr16[c] = %i, c = %i, %i \n",
+                     //brn->me, vid, v_prop[vid], ptr16[c], c, nim_tmp->datatype);
+
+            }
+
+            c++;
+          }
+        }
+      }
+
+      // set voxel properties based on the nifti_image data
+      for (i=0; i<nlocal; i++) {
+        if (n_prop[i] > 0)
+          v_prop[i] /= n_prop[i];
+
+        double coef = 1.0 / (1.0 - thres_val);
+        // criteria based on mri file
+        if (!mri_arg[tis][0].compare("all")) {
+          if (v_prop[i] <= 0) {
+            type[i] = EMP_type;
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              agent[ag_id][i][0] = 0.0;
+          }
+
+          else if (v_prop[i] < thres_val) {
+            type[i] = CSF_type;
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              agent[ag_id][i][0] = 0.0;
+          }
+
+          else if (v_prop[i] > thres_val) {
+            type[i] = GM_type;
+            agent[neu][i][0] = (v_prop[i] - thres_val) * coef * max_val;
+          }
+        }
+
+        else if (!mri_arg[tis][0].compare("wm")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = WM_type;
+            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+          }
+        }
+
+        else if (!mri_arg[tis][0].compare("gm")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = GM_type;
+            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+          }
+        }
+
+        else if (!mri_arg[tis][0].compare("csf")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = CSF_type;
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              agent[ag_id][i][0] = 0.0;
+          }
+        }
+
+      }
+
+      nifti_image_free(nim_tmp);
+
+    }
+
+    brn->memory->destroy(v_prop);
+    brn->memory->destroy(n_prop);
+
+  }
+
+  // set all values to zero for EMT_type voxels
+  for (i=0; i<nall; i++)
+    if (type[i] == EMP_type) {
+      for (int ag_id=0; ag_id<num_agents; ag_id++)
+        agent[ag_id][i][0] = 0.0;
+    }
 
 }
 

@@ -8,7 +8,7 @@ timestep 0.001 # day
 nevery 10 # nevery steps for bond connections
 box -5.0e4 5.0e4  -5.0e4 5.0e4  -5.0e4 5.0e4 # xlo xhi  ylo yhi  zlo zhi (um)
 
-voxel_size 1.0e3 # um (Note: minimum voxel_size is 100 um in order to include 70 neurons in itself.)
+voxel_size 1.2e3 # um (Note: minimum voxel_size is 100 um in order to include 70 neurons in itself.)
 
 parameters diff_sAb 2.0e7 # um2/day
 parameters kp 7.8e0 # 1/uM . 1/day
@@ -31,14 +31,18 @@ parameters fAb 0.0 # uM
 parameters cir 4.0e-11 # neuronal Abeta secretion (mol/day/neuron)
 parameters ast 0.0 # astrogliosis
 
-read_mri mni152_2009bet.nii
+#read_mri restart restart.nii 0.0 1.0
+#read_mri all mni152_2009bet.nii 0.5 1.0e8
+read_mri wm wm.nii 0.3 1.0e7
+read_mri gm gm.nii 0.25 1.0e8
+read_mri csf csf.nii 0.2 1.0
 
-balance y 20
+#balance y 20
 
 ## outputs
-dump mri 100000 dump. mic neu sAb fAb ast type
-statistics 1000 stat.dat
+dump mri 1 dump. mic neu sAb fAb ast type
+statistics 1 stat.dat
 
-log 1000
-run 6000000
+log 1
+run 1
 setup

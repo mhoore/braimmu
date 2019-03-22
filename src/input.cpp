@@ -164,19 +164,20 @@ void Input::execute_command(Brain *brn) {
 
   /* Command: read_mri - assigning an mri nifti image file (.nii) for
    * the topology of the system.
-   * syntax: read_mri mri_file.nii
-   * example:
-   * arguments: */
+   * syntax: read_mri keyword file.nii thres_val max_val
+   * example: read_mri gm gm.nii 0.1 1.0e9
+   * arguments:
+   * keywords: gm, wm, csf, restart, all
+   * thres_val: threshold value between 0 and 1
+   * max_val: maximum number of neurons */
   else if (!command.compare("read_mri")) {
-    if (narg < 1) {
+    if (narg < 4){
       printf("Error: read_mri \n");
       exit(1);
     }
 
-    if (!read_mri(brn)) {
-        printf("Error: in reading mri file \n");
-        exit(1);
-      }
+    read_mri(brn);
+
   }
 
   /* Command: setup - initialization point the system.
@@ -315,39 +316,15 @@ int Input::read_parameters(Brain *brn) {
 /* ----------------------------------------------------------------------
  * Read MRI image (.nii) to define the spatial domain of the simulation.
  * ----------------------------------------------------------------------*/
-int Input::read_mri(Brain *brn) {
-  string fin = (*arg)[0];
+void Input::read_mri(Brain *brn) {
+  int i,j;
 
-  /* read the nifti header, and optionally image data */
-  brn->nim = nifti_image_read(fin.c_str(),1);
-  if(!brn->nim)
-    return 0;
+  brn->init->mri_arg.push_back(vector<string>());
+  i = brn->init->mri_arg.size() - 1;
 
-  if (!brn->me) {
-    printf("##################### \n");
-    printf("NIFTI image %s is read. \n", fin.c_str());
-    printf("NIFTI image properties: ");
-    printf("ndim = %i \n", brn->nim->ndim);
-    for (int i=1; i<8; i++)
-      printf("dim[%i] = %i, pixdim[i] = %g \n",
-             i,brn->nim->dim[i],i,brn->nim->pixdim[i]);
-    printf("nvox = %lli \n", brn->nim->nvox);
-    printf("nbyper = %i \n", brn->nim->nbyper);
-    printf("datatype = %i \n", brn->nim->datatype);
+  for (j=0; j<narg; j++)
+    brn->init->mri_arg[i].push_back((*arg)[j]);
 
-    printf("calmin = %g, calmax = %g \n", brn->nim->cal_min, brn->nim->cal_max);
-    printf("toffset = %g \n", brn->nim->toffset);
-
-    printf("xyz_units = %i, time_units = %i \n", brn->nim->xyz_units, brn->nim->time_units);
-    printf("nifti_type = %i \n", brn->nim->nifti_type);
-
-    printf("intent_code = %i \n", brn->nim->intent_code);
-
-    printf("description: %s \n", brn->nim->descrip);
-    printf("##################### \n");
-  }
-
-  return 1;
 }
 
 /* ----------------------------------------------------------------------*/

@@ -17,6 +17,7 @@ from matplotlib.colors import LogNorm
 import subprocess
 import os
 import nibabel as nib
+import math
 
 rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 30})
 rc('text', usetex=True)
@@ -169,7 +170,7 @@ def main():
             
             c += 1
     
-    prune_data()
+    #prune_data()
     
     for me in range(Nx[3]-1):
         z = data[:,:,:,0,me].flatten()
@@ -181,9 +182,11 @@ def main():
         mu = np.mean(z)
         sig = np.std(z)
         
-        print(mu,sig)
+        print(me,ag_sgn[me],mu,sig)
 
         zs = (z-mu)/sig
+        if (math.isnan(sig)):
+            continue
         
         cut_min = np.min(zs)
         cut_max = np.max(zs)
@@ -193,15 +196,27 @@ def main():
             Zscore.append( ( agents[i][me] - mu)/sig )
         
         fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
-        make_plot(Zscore,z,me,cut_min,cut_max,fw)
 
+        z   = data[:,:,:,0,me].flatten()
+        tis = data[:,:,:,0,-1].flatten()
+
+        make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
+
+    me = Nx[3]-1
+    z = data[:,:,:,0,me].flatten()
+    Zscore = []
+    for i in range(3):
+        Zscore.append( agents[i][me] )
+    fw = "multi/m_type_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    make_plot(Zscore,z,tis,me,-1,3,fw,4)
+    
     data = []
     data_sec = []
 
 def prune_data():
     # find useless data
     for i in range(3):
-        marray = np.ma.masked_where(agents[i][-1] <= 0,agents[i][-1]).mask
+        marray = np.ma.masked_where(agents[i][-1] < 0,agents[i][-1]).mask
         
         x[i] = np.ma.array(x[i], mask = marray).compressed()
         y[i] = np.ma.array(y[i], mask = marray).compressed()
@@ -210,8 +225,7 @@ def prune_data():
             agents[i][j] = np.ma.array(agents[i][j], mask = marray).compressed()
     
 ## plots
-def make_plot(Zscore,z,me,cut_min,cut_max,fw):
-    contour_levels = 100
+def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     fig = pl.figure(figsize=(15,14))
     ax = fig.add_subplot(111)
     
@@ -222,6 +236,8 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     mly   = MultipleLocator(10)
 
     lbl = r'$z_{%s}$' % ag_sgn[me]
+    if (me == Nx[3]-1):
+        lbl = r'$\rm Tissue$'
 
     ## dim0
     bx = lx[0] + xsep
@@ -231,7 +247,7 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[0]+bx,y[0]+by), Zscore[0], (x_gr, y_gr), method='cubic')
+    z_gr = griddata((x[0]+bx,y[0]+by), Zscore[0], (x_gr, y_gr), method='nearest')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
@@ -248,7 +264,7 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[1]+bx,y[1]+by), Zscore[1], (x_gr, y_gr), method='cubic')
+    z_gr = griddata((x[1]+bx,y[1]+by), Zscore[1], (x_gr, y_gr), method='nearest')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
@@ -265,14 +281,14 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[2]+bx,y[2]+by), Zscore[2], (x_gr, y_gr), method='cubic')
+    z_gr = griddata((x[2]+bx,y[2]+by), Zscore[2], (x_gr, y_gr), method='nearest')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
     #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
     
     cs.cmap.set_under('None')
-    cs.cmap.set_over('k')
+    cs.cmap.set_over('None')
     
     ## section  lines
     ax.plot([xsep,lx[0]],[sec[1]*dx[1], sec[1]*dx[1]],'k-',lw=0.5)
@@ -281,8 +297,11 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
     ax.plot([lx[0] + xsep + sec[1]*dx[1],lx[0] + xsep + sec[1]*dx[1]],[lx[1] + ysep,lx[1] + ysep + lx[2]],'k-',lw=0.5)
 
     # scale bar
-    ax.plot([12 + 200,108 + 200],[lx[1] - 14.0*ysep,lx[1] - 14.0*ysep],'k-',lw=10.0)
-    fig.text(0.67,0.495,r'$\rm 100 ~mm$')
+    from matplotlib.patches import Rectangle
+    #cax = pl.gca()
+    ax.add_patch(Rectangle((250, 205), 100, 2, alpha=1, color='k'))
+    #ax.plot([12 + 200,108 + 200],[lx[1] - 14.0*ysep,lx[1] - 14.0*ysep],'k-',lw=10.0)
+    fig.text(0.65,0.48,r'$\rm 100 ~mm$')
 
     # ax.plot(x, y, 'ko', markersize=4)
 
@@ -328,15 +347,36 @@ def make_plot(Zscore,z,me,cut_min,cut_max,fw):
 
     # inset
     ax2 = fig.add_axes([0.52, 0.13, 0.38, 0.28], facecolor=(1.,1.,1.))
-    ax2.hist(z, histtype='stepfilled',bins=50,density=True, fc='#CCCCCC', alpha=0.5, edgecolor='black', linewidth=1.2)  # bins='auto'
+    if (me == Nx[3]-1): # for type (tissue) histogram
+        Z = np.ma.masked_equal(z,-1)
+        z = Z.compressed()
+        ax2.hist(z, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2)  # bins='auto'
+    else:
+        marray = np.ma.masked_where(tis != 1,tis).mask
+        z1 = np.ma.array(z, mask = marray).compressed()
+        marray = np.ma.masked_where(tis != 2,tis).mask
+        z2 = np.ma.array(z, mask = marray).compressed()
+        
+        SMALL = 1.e-6
+        
+        z1[z1 <= SMALL] = 0
+        Z = np.ma.masked_equal(z1,0)
+        z1 = Z.compressed()
+
+        z2[z2 <= SMALL] = 0
+        Z = np.ma.masked_equal(z2,0)
+        z2 = Z.compressed()
+        
+        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='cyan', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
+        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
     ax2.set_xlabel(ag_names[me])
     #ax2.set_ylabel(r'$\rm probability$')
     
     #ax2.set_xlim(cut_min,cut_max)
-    #ax2.set_xticklabels([r'%.2e' % cut_min, r'%.2e' % cut_max])
+    ax2.set_yticklabels([])
     
     ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-    ax2.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    #ax2.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
 
     pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
     pl.close()

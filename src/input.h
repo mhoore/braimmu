@@ -31,7 +31,7 @@ class Input : public Memory {
   void execute_command(class Brain*);
 
   int read_parameters(class Brain*);
-  int read_mri(class Brain*);
+  void read_mri(class Brain*);
   void read_region(class Brain*);
   int read_restart(class Brain*);
   int read_statistics(class Brain*);

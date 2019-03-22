@@ -39,7 +39,8 @@ const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","cir"}; // "ilb
 /// voxel types
 const int EMP_type = -1; // Empty space type
 const int CSF_type = 0; // Cerebrospinal fluid type
-const int PAR_type = 1; // parenchyma type
+const int WM_type = 1; // White matter parenchyma type
+const int GM_type = 2; // Gray matter parenchyma type
 
 }
 

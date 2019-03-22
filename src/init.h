@@ -25,6 +25,7 @@ class Init : public Memory {
   ~Init();
 
   void setup(class Brain*);
+  void read_mri(class Brain*);
   void boundaries(class Brain*);
   void voxels(class Brain*, int);
   void neighbor(class Brain*);
@@ -33,6 +34,8 @@ class Init : public Memory {
 
   int mri_boundaries(class Brain*, nifti_image*);
   void mri_topology(class Brain*, nifti_image*);
+
+  vector<vector<string>> mri_arg;
 
 private:
   tagint find_me(class Brain*, int, int, int);

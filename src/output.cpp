@@ -282,7 +282,7 @@ void Output::statistics(Brain *brn) {
   double **agent_val;
   tagint *agent_num;
 
-  nr = 2; // number of regions: PAR and CSF
+  nr = 2; // number of regions: parenchyma and CSF
 
   create(agent_val,num_agents,nr,"agent_val");
   create(agent_num,nr,"agent_num");
@@ -294,7 +294,7 @@ void Output::statistics(Brain *brn) {
     }
 
   for (i=0; i<nlocal; i++) {
-    if (type[i] == PAR_type)
+    if (type[i] == WM_type || type[i] == GM_type)
       c = 0;
     else if (type[i] == CSF_type)
       c = 1;
@@ -820,7 +820,7 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
   int i;
   string str;
 
-  nifti_image    *nim;
+  nifti_image *nim;
   //nifti_1_header *nhdr;
 
   //create(dims,8,"output:dims");
