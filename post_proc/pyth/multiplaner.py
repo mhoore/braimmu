@@ -171,7 +171,34 @@ def main():
             c += 1
     
     #prune_data()
-    
+    me = 0
+    z = data[:,:,:,0,me].flatten()
+    SMALL = 1.e-6
+    z[z <= SMALL] = 0
+    Z = np.ma.masked_equal(z,0)
+    z = Z.compressed() # get normal array with masked values removed
+
+    mu = np.mean(z)
+    sig = np.std(z)
+
+    print(me,ag_sgn[me],mu,sig)
+
+    zs = (z-mu)/sig
+    if (math.isnan(sig) == False):
+        cut_min = np.min(zs)
+        cut_max = np.max(zs)
+
+        Zscore = []
+        for i in range(3):
+            Zscore.append( ( agents[i][me] - mu)/sig )
+
+        fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+
+        z   = data[:,:,:,0,me].flatten()
+        tis = data[:,:,:,0,-1].flatten()
+
+        make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
+
     for me in range(Nx[3]-1):
         z = data[:,:,:,0,me].flatten()
         SMALL = 1.e-6
@@ -249,6 +276,7 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     # grid the data.
     z_gr = griddata((x[0]+bx,y[0]+by), Zscore[0], (x_gr, y_gr), method='nearest')
 
+    print(np.min(z_gr),cut_min)
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
     #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
@@ -367,8 +395,8 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
         Z = np.ma.masked_equal(z2,0)
         z2 = Z.compressed()
         
-        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='cyan', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
-        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
+        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
+        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=2)  # bins='auto'
     ax2.set_xlabel(ag_names[me])
     #ax2.set_ylabel(r'$\rm probability$')
     
