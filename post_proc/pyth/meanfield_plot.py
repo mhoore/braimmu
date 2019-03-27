@@ -92,7 +92,7 @@ def main():
     fig = pl.figure(figsize=(7,5))
     ax = fig.add_subplot(111)
     
-    # neu
+    # dementia (1 - N/N0)
     x = data_PAR[:,T_id] * delt
     y = 1.0 - data_PAR[:,N_id] / np.max(data_PAR[:,N_id])
     lbl = r'$\rm dementia$'
@@ -113,15 +113,30 @@ def main():
     
     ax.plot(x, y, c='b', ls='-.', lw=2, label=lbl)
 
-    ax.legend(loc='lower right', borderpad=.4, labelspacing=.1, borderaxespad=.1, columnspacing=.2, fontsize=16, ncol=3)
+    # PAR sAb
+    x = data_PAR[:,T_id] * delt
+    y = data_PAR[:,S_id] / np.max(data_PAR[:,S_id])
+    lbl = r'$\rm S / S_{\rm max} (ISF)$'
+    
+    ax.plot(x, y, c='g', ls='-', lw=2, label=lbl)
+
+    # CSF sAb
+    x = data_CSF[:,T_id] * delt
+    y = data_CSF[:,S_id] / np.max(data_CSF[:,S_id])
+    lbl = r'$\rm S / S_{\rm max} (CSF)$'
+    
+    ax.plot(x, y, c='g', ls='-.', lw=2, label=lbl)
+
+
+    ax.legend(loc='upper center', borderpad=.4, labelspacing=.1, borderaxespad=.1, columnspacing=.2, fontsize=16, ncol=3)
 
     #ax.set_yscale('log')
 
     ax.set_xlim(0.0,np.max(x))
-    ax.set_xticks([0,5,10,15])
+    ax.set_xticks([0,5,10])
     ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
     ax.set_xlabel(names[T_id])
-    ax.set_ylim(0,1.1)
+    ax.set_ylim(0,1.3)
     ax.set_yticks(np.linspace(0, 1, 3, endpoint=True))
     #ax.set_ylabel('y', color='black', fontsize = 24)
 
