@@ -29,7 +29,7 @@ p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 # Data Input
 scale_fac = 1.e-3
 
-if len(sys.argv) < 7:
+if len(sys.argv) < 8:
     print(sys.argv)
     sys.exit("Error: chack the arguments")
 
@@ -40,16 +40,18 @@ sec.append(int(sys.argv[3]))
 sec.append(int(sys.argv[4]))
 time = sys.argv[5]
 realtime = sys.argv[6]
+fr0 = sys.argv[7]
 
 AGENTS = ("mic","neu","sAb","fAb","ast","typ")
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$')
-ag_sgn = ('M', 'N', 'S','F','A','TYPE')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
+ag_sgn = ('M', 'N', 'S','F','A','TYPE','atrophy')
 
 x = []
 y = []
 Npoints = []
 
 agents = []
+agents0 = []
 
 Nx = np.zeros(4, dtype=np.int32)
 dx = np.zeros(3, dtype=np.float32)
@@ -92,6 +94,10 @@ def main():
     img = nib.load(fr)
     data = img.get_fdata()
     data_sec = []
+
+    img0 = nib.load(fr0)
+    data0 = img0.get_fdata()
+    data_sec0 = []
     
     Nx[0], Nx[1], Nx[2], dum, Nx[3] = data.shape
     dx[0], dx[1], dx[2], dt, dum = img.header.get_zooms()
@@ -102,28 +108,35 @@ def main():
     
     # dim0
     data_sec.append(data[sec[0]-1,:,:,0,:])
+    data_sec0.append(data0[sec[0]-1,:,:,0,:])
     Npoints.append(Nx[1] * Nx[2])
     x.append(np.zeros(Npoints[0], dtype=np.float32))
     y.append(np.zeros(Npoints[0], dtype=np.float32))
     agents.append([])
+    agents0.append([])
     
     # dim1
     data_sec.append(data[:,sec[1]-1,:,0,:])
+    data_sec0.append(data0[:,sec[1]-1,:,0,:])
     Npoints.append(Nx[0] * Nx[2])
     x.append(np.zeros(Npoints[1], dtype=np.float32))
     y.append(np.zeros(Npoints[1], dtype=np.float32))
     agents.append([])
+    agents0.append([])
     
     # dim2
     data_sec.append(data[:,:,sec[2]-1,0,:])
+    data_sec0.append(data0[:,:,sec[2]-1,0,:])
     Npoints.append(Nx[0] * Nx[1])
     x.append(np.zeros(Npoints[2], dtype=np.float32))
     y.append(np.zeros(Npoints[2], dtype=np.float32))
     agents.append([])
+    agents0.append([])
     
     for i in range(3):
         for j in range(Nx[3]):
             agents[i].append(np.zeros(Npoints[i], dtype=np.float32))
+            agents0[i].append(np.zeros(Npoints[i], dtype=np.float32))
     
     # dim 0
     ii = 1
@@ -137,6 +150,7 @@ def main():
             
             for ag_id in range(Nx[3]):
                 agents[0][ag_id][c] = data_sec[0][i,j,ag_id]
+                agents0[0][ag_id][c] = data_sec0[0][i,j,ag_id]
             
             c += 1
     
@@ -152,6 +166,7 @@ def main():
             
             for ag_id in range(Nx[3]):
                 agents[1][ag_id][c] = data_sec[1][i,j,ag_id]
+                agents0[1][ag_id][c] = data_sec0[1][i,j,ag_id]
             
             c += 1
     
@@ -167,10 +182,14 @@ def main():
             
             for ag_id in range(Nx[3]):
                 agents[2][ag_id][c] = data_sec[2][i,j,ag_id]
+                agents0[2][ag_id][c] = data_sec0[2][i,j,ag_id]
             
             c += 1
     
     #prune_data()
+    
+    # dummy image generation - preset
+    ########################
     me = 0
     z = data[:,:,:,0,me].flatten()
     SMALL = 1.e-6
@@ -180,8 +199,6 @@ def main():
 
     mu = np.mean(z)
     sig = np.std(z)
-
-    print(me,ag_sgn[me],mu,sig)
 
     zs = (z-mu)/sig
     if (math.isnan(sig) == False):
@@ -198,6 +215,7 @@ def main():
         tis = data[:,:,:,0,-1].flatten()
 
         make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
+    ########################
 
     for me in range(Nx[3]-1):
         z = data[:,:,:,0,me].flatten()
@@ -229,6 +247,7 @@ def main():
 
         make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
 
+    # tissue
     me = Nx[3]-1
     z = data[:,:,:,0,me].flatten()
     Zscore = []
@@ -236,9 +255,34 @@ def main():
         Zscore.append( agents[i][me] )
     fw = "multi/m_type_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
     make_plot(Zscore,z,tis,me,-1,3,fw,4)
+
+    # attrophy (1-N)
+    me = 1
+    atrophy = []
+    for i in range(3):
+        atrophy.append(- agents[i][me] / agents0[i][me] + 1.0)
+
+    z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
+    SMALL = 1.e-6
+    z[z <= SMALL] = 0
+    Z = np.ma.masked_equal(z,0)
+    z = Z.compressed() # get normal array with masked values removed
+    
+    cut_min = 0.0
+    cut_max = 1.0
+    
+    fw = "multi/m_atrophy_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+
+    z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
+    tis = data[:,:,:,0,-1].flatten()
+
+    print('HERE')
+    make_plot(atrophy,z,tis,Nx[3],cut_min,cut_max,fw,100)
     
     data = []
     data_sec = []
+    data0 = []
+    data_sec0 = []
 
 def prune_data():
     # find useless data
@@ -265,6 +309,8 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     lbl = r'$z_{%s}$' % ag_sgn[me]
     if (me == Nx[3]-1):
         lbl = r'$\rm Tissue$'
+    elif (me == Nx[3]):
+        lbl = r'$\rm Atrophy$'
 
     ## dim0
     bx = lx[0] + xsep
