@@ -441,8 +441,10 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
         Z = np.ma.masked_equal(z2,0)
         z2 = Z.compressed()
         
-        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=2)  # bins='auto'
-        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=2)  # bins='auto'
+        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=2, label=r'$\rm GM$')  # bins='auto'
+        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=2, label=r'$\rm WM$')  # bins='auto'
+        ax2.legend(loc='upper right', fontsize=18, ncol=1)
+        
     ax2.set_xlabel(ag_names[me])
     #ax2.set_ylabel(r'$\rm probability$')
     
