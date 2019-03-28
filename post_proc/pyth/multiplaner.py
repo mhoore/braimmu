@@ -39,7 +39,7 @@ sec.append(int(sys.argv[2]))
 sec.append(int(sys.argv[3]))
 sec.append(int(sys.argv[4]))
 time = sys.argv[5]
-realtime = sys.argv[6]
+realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
 
 AGENTS = ("mic","neu","sAb","fAb","ast","typ")
@@ -390,7 +390,7 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     ax.xaxis.set_minor_locator(mlx)
     ax.yaxis.set_minor_locator(mly)
 
-    tit = r'%s ,  $\rm t = %s ~(day)$' % (ag_tit[me],realtime)
+    tit = r'%s ,  $\rm t = %g ~(day)$' % (ag_tit[me],realtime)
     ax.set_xticks([])
     ax.set_yticks([])
 
