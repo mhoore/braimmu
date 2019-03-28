@@ -19,7 +19,7 @@ import os
 import nibabel as nib
 import math
 
-rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 30})
+rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 26})
 rc('text', usetex=True)
 rcParams.update({'figure.autolayout': True})
 
@@ -43,6 +43,7 @@ realtime = sys.argv[6]
 fr0 = sys.argv[7]
 
 AGENTS = ("mic","neu","sAb","fAb","ast","typ")
+ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
 ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
 ag_sgn = ('M', 'N', 'S','F','A','TYPE','atrophy')
 
@@ -297,9 +298,10 @@ def prune_data():
     
 ## plots
 def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
-    fig = pl.figure(figsize=(15,14))
-    ax = fig.add_subplot(111)
-    
+    fig = pl.figure(figsize=(9,9))
+    #ax = fig.add_subplot(111)
+    ax = fig.add_axes([0.02,0.02,0.9,0.9])
+
     xsep = 1.
     ysep = 1.
     
@@ -373,9 +375,9 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     # scale bar
     from matplotlib.patches import Rectangle
     #cax = pl.gca()
-    ax.add_patch(Rectangle((250, 205), 100, 2, alpha=1, color='k'))
+    ax.add_patch(Rectangle((150, 205), 100, 2, alpha=1, color='k'))
     #ax.plot([12 + 200,108 + 200],[lx[1] - 14.0*ysep,lx[1] - 14.0*ysep],'k-',lw=10.0)
-    fig.text(0.65,0.48,r'$\rm 100 ~mm$')
+    fig.text(0.39,0.47,r'$\rm 100 ~mm$')
 
     # ax.plot(x, y, 'ko', markersize=4)
 
@@ -388,12 +390,13 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     ax.xaxis.set_minor_locator(mlx)
     ax.yaxis.set_minor_locator(mly)
 
-    tit = r'$\rm time = %s ~(day)$' % realtime
+    tit = r'%s ,  $\rm t = %s ~(day)$' % (ag_tit[me],realtime)
     ax.set_xticks([])
     ax.set_yticks([])
 
     #if (i_y == 1):
-    ax.set_title(tit)
+    fig.text(0.50,0.96,tit,fontsize=30, ha='center', va='center')
+    #ax.set_title(tit)
     #ax.set_xticklabels([])
     #if (i_y == 0):
     #ax.set_xlabel(r'$\left( \phi - \pi \right) \sin{\theta} + \pi$')
@@ -414,17 +417,19 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     #mticks = cbar.norm([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10,20])
     #cbar.ax.yaxis.set_ticks(mticks, minor=True)
     #cbar.set_ticklabels([0, r'%.2e' % np.max(z)])
-    cbar.ax.set_yticklabels([r'%.2e' % cut_min, r'%.2e' % cut_max],rotation=90)
-    fig.text(0.96,0.5,lbl, rotation='vertical')
+    #cbar.ax.set_yticklabels([r'$\rm %.1e$' % cut_min, r'$\rm %.1e$' % cut_max],rotation=90,fontsize=30)
+    cbar.ax.set_yticklabels([r'$\rm %.1f$' % cut_min, r'$\rm %.1f$' % cut_max],rotation=90,fontsize=30)
+    fig.text(0.96,0.5,lbl, rotation='vertical', fontsize=30)
     
     ax.set_aspect('equal')
 
     # inset
-    ax2 = fig.add_axes([0.52, 0.13, 0.38, 0.28], facecolor=(1.,1.,1.))
+    ax2 = fig.add_axes([0.48, 0.11, 0.38, 0.28], facecolor=(1.,1.,1.))
     if (me == Nx[3]-1): # for type (tissue) histogram
         Z = np.ma.masked_equal(z,-1)
         z = Z.compressed()
         ax2.hist(z, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2)  # bins='auto'
+        ax2.set_xticklabels([r'$\rm -1 (empty)$',r'$\rm 0 (CSF)$', r'$\rm 1 (WM)$', r'$\rm 2 (GM)$'])
     else:
         marray = np.ma.masked_where(tis != 1,tis).mask
         z1 = np.ma.array(z, mask = marray).compressed()
@@ -441,18 +446,19 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
         Z = np.ma.masked_equal(z2,0)
         z2 = Z.compressed()
         
-        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=2, label=r'$\rm GM$')  # bins='auto'
-        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=2, label=r'$\rm WM$')  # bins='auto'
+        ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2, label=r'$\rm GM$')  # bins='auto'
+        ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=1.2, label=r'$\rm WM$')  # bins='auto'
         ax2.legend(loc='upper right', fontsize=18, ncol=1)
+
+        ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+        #ax2.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
         
-    ax2.set_xlabel(ag_names[me])
-    #ax2.set_ylabel(r'$\rm probability$')
-    
     #ax2.set_xlim(cut_min,cut_max)
     ax2.set_yticklabels([])
     
-    ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-    #ax2.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+    ax2.set_title(ag_names[me], fontsize = 26)
+    #ax2.set_xlabel(ag_names[me], fontsize = 26)
+    #ax2.set_ylabel(r'$\rm probability$')
 
     pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
     pl.close()
