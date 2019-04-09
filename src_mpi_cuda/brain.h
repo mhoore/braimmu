@@ -18,7 +18,6 @@
 #include "input.h"
 #include "memory.h"
 #include "init.h"
-#include "run.h"
 #include "comm.h"
 #include "output.h"
 #include "region.h"
@@ -33,11 +32,14 @@ class Brain {
   void allocations();
   void destroy();
 
+  void integrate(int);
+  void update();
+  void derivatives();
+
   // classes
   Input *input;
   Memory *memory;
   Init *init;
-  Run *run;
   Comm *comm;
   Output *output;
   Region *region;
@@ -50,7 +52,7 @@ class Brain {
   //Output *output;
 
   int *npart;
-  int *nv;
+  int *nv, *nvl; // number of voxels in each direction, global and local
   tagint nvoxel; // total number of voxels
   int nlocal, nghost, nall; // number of voxels for each core, local/ghost/all
 
@@ -80,7 +82,9 @@ class Brain {
   nifti_image *nim;
 
   /// model parameters
-  double ***agent; // agents
+  //std::array<std::vector<double>, num_agents> agents, agentsDiff;
+  //double ***agent; // agents
+  std::array<std::vector<double>, num_agents> agent, deriv;
   //double ***grad; // gradients
   double init_val[num_agents];
   double D_sAb, diff_sAb; // diffusivity of sAb

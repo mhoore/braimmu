@@ -52,7 +52,6 @@ void Output::lammpstrj(Brain *brn) {
   int *type = brn->type;
 
   double **x = brn->x;
-  double ***agent = brn->agent;
 
   dsize = num_agents + 5; // NOTE: the number of data packed to the buffer
   create(send_buf,nlocal*dsize,"send_buf");
@@ -68,7 +67,7 @@ void Output::lammpstrj(Brain *brn) {
     send_buf[c++] = x[i][2];
 
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = agent[ag_id][i][0];
+      send_buf[c++] = brn->agent[ag_id][i];
   }
 
   create(rcounts,nproc,"rcounts");
@@ -155,8 +154,6 @@ void Output::restart(Brain *brn) {
   tagint *tag = brn->tag;
   int *type = brn->type;
 
-  double ***agent = brn->agent;
-
   dsize = num_agents + 2;
   create(send_buf,nlocal*dsize,"send_buf");
 
@@ -167,7 +164,7 @@ void Output::restart(Brain *brn) {
     send_buf[c++] = ubuf(type[i]).d;
 
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = agent[ag_id][i][0];
+      send_buf[c++] = brn->agent[ag_id][i];
   }
 
   if (!me) {
@@ -275,7 +272,6 @@ void Output::statistics(Brain *brn) {
   int nlocal = brn->nlocal;
 
   double **x = brn->x;
-  double ***agent = brn->agent;
 
   int *type = brn->type;
 
@@ -302,7 +298,7 @@ void Output::statistics(Brain *brn) {
       continue;
 
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      agent_val[ag_id][c] += agent[ag_id][i][0];
+      agent_val[ag_id][c] += brn->agent[ag_id][i];
     agent_num[c]++;
   }
 
@@ -380,7 +376,6 @@ void Output::statistics_sphere(Brain *brn) {
   int nlocal = brn->nlocal;
 
   double **x = brn->x;
-  double ***agent = brn->agent;
 
   double **agent_val;
   tagint *agent_num;
@@ -402,7 +397,7 @@ void Output::statistics_sphere(Brain *brn) {
     if (c >= nr) continue;
 
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      agent_val[ag_id][c] += agent[ag_id][i][0];
+      agent_val[ag_id][c] += brn->agent[ag_id][i];
     agent_num[c]++;
   }
 
@@ -507,8 +502,6 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   double **x = brn->x;
   int *type = brn->type;
 
-  double ***agent = brn->agent;
-
   dsize = 3;
   c = 3;
   while (c < arg.size()) {
@@ -538,7 +531,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
       if (!arg[aid].compare("type"))
         send_buf[c++] = ubuf(type[i]).d;
       else if (ag_id >= 0)
-        send_buf[c++] = agent[ag_id][i][0];
+        send_buf[c++] = brn->agent[ag_id][i];
       aid++;
     }
 
@@ -647,8 +640,6 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   double **x = brn->x;
   int *type = brn->type;
 
-  double ***agent = brn->agent;
-
   dsize = 3;
   c = 3;
   while (c < arg.size()) {
@@ -682,7 +673,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
       else if (!arg[aid].compare("me"))
         send_buf[c++] = ubuf(me).d;
       else if (ag_id >= 0)
-        send_buf[c++] = agent[ag_id][i][0];
+        send_buf[c++] = brn->agent[ag_id][i];
       aid++;
     }
   }

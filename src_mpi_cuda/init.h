@@ -37,9 +37,9 @@ class Init : public Memory {
 
   vector<vector<string>> mri_arg;
 
-private:
   tagint find_me(class Brain*, int, int, int);
 
+ private:
   uint8_t * ptr8;
   int16_t *ptr16;
   int32_t *ptr32;

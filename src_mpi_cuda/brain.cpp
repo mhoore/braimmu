@@ -36,7 +36,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
 
   if (!me)
     printf("Integration started. \n");
-  run->integrate(this, Nrun);
+  integrate(Nrun);
 
   //printf("proc %i: xlo = %g \n", me, xlo);
   //MPI_Barrier(MPI_COMM_WORLD);
@@ -53,7 +53,6 @@ Brain::~Brain() {
   delete region;
   delete output;
   delete comm;
-  delete run;
   delete init;
   delete input;
   delete memory;
@@ -82,6 +81,7 @@ void Brain::allocations() {
   es = 0.0;
 
   memory->create(nv,3,"nv");
+  memory->create(nvl,3,"nvl");
   memory->create(npart,3,"npart");
 
   memory->create(boxlo,3,"boxlo");
@@ -94,7 +94,6 @@ void Brain::allocations() {
   memory = new Memory();
   input = new Input();
   init = new Init();
-  run = new Run();
   comm = new Comm();
   output = new Output();
   region = new Region();
@@ -105,6 +104,7 @@ void Brain::allocations() {
 /* ----------------------------------------------------------------------*/
 void Brain::destroy() {
   memory->destroy(nv);
+  memory->destroy(nvl);
   memory->destroy(npart);
 
   memory->destroy(boxlo);
@@ -123,7 +123,7 @@ void Brain::destroy() {
   memory->destroy(num_neigh);
   memory->destroy(neigh);
 
-  memory->destroy(agent);
+  //memory->destroy(agent);
   //memory->destroy(grad);
 
   if(nim)

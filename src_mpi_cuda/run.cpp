@@ -3,24 +3,15 @@
 
 #include "pointers.h"
 #include "brain.h"
-#include "run.h"
 
 using namespace std;
 using namespace brain_NS;
 
-/* ---------------------------------------------------------------------- */
-Run::Run() {
-}
-
 /* ----------------------------------------------------------------------*/
-Run::~Run() {
-}
-
-/* ----------------------------------------------------------------------*/
-void Run::integrate(Brain *brn, int Nrun) {
+void Brain::integrate(int Nrun) {
   double t0,t1;
 
-  MPI_Barrier(brn->world);
+  MPI_Barrier(world);
   t0 = MPI_Wtime();
 
   int iter = 0;
@@ -40,111 +31,105 @@ void Run::integrate(Brain *brn, int Nrun) {
     fclose(fw);
     ////////DEBUG/////////////////////
 */
-    brn->comm->forward_comm(brn);
+    comm->forward_comm(this);
 
-    derivatives(brn);
+    derivatives();
 
-    brn->comm->reverse_comm(brn);
+    comm->reverse_comm(this);
 
     // communicate bond connections
 
-    update(brn);
-    brn->step++;
+    update();
+    step++;
     iter++;
 
-    if (brn->output->do_dump)
-      brn->output->dump(brn);
-    if (brn->output->severy > 0)
-      brn->output->statistics(brn);
+    if (output->do_dump)
+      output->dump(this);
+    if (output->severy > 0)
+      output->statistics(this);
 
-    if (brn->step % brn->Nlog == 0) {
-      MPI_Barrier(brn->world);
+    if (step % Nlog == 0) {
+      MPI_Barrier(world);
       double t2;
       t2 = MPI_Wtime();
-      if (!brn->me)
+      if (!me)
         printf("Step %i, time lapsed = %g sec, speed = %g steps/sec \n",
-               brn->step, t2 - t0, float(brn->Nlog)/(t2-t1) );
+               step, t2 - t0, float(Nlog)/(t2-t1) );
       t1 = t2;
     }
 
   }
 
-  MPI_Barrier(brn->world);
+  MPI_Barrier(world);
   t1 = MPI_Wtime();
-  if (!brn->me)
+  if (!me)
     printf("Final step, total iterations = %i, total time lapsed = %g sec, speed = %g steps/sec \n",
            Nrun, t1 - t0, float(Nrun)/(t1-t0) );
 
 }
 
 /* ----------------------------------------------------------------------*/
-void Run::derivatives(Brain *brn) {
+void Brain::derivatives() {
   int i,j,jj,ag_id;
   double del_sAb,del_fAb, del_mic;
   double dum;
 
-  int nlocal = brn->nlocal;
-  int nall = brn->nall;
-
-  int *type = brn->type;
-
-  double ***agent = brn->agent;
-
-  int *num_neigh = brn->num_neigh;
-  int **neigh = brn->neigh;
-
   // set derivatives of all voxels to zero
   for (ag_id=0; ag_id<num_agents; ag_id++)
     for (i=0; i<nall; i++)
-      agent[ag_id][i][1] = 0.0;
+      deriv[ag_id][i] = 0.0;
 
   // spatial derivatives
   for (i=0; i<nlocal; i++) {
     if (type[i] == EMP_type) continue;
+
+    //int ii,jj,kk;
+    //tagint itag = brn->init->find_me(brn,ii,jj,kk);
+    //j = brn->map[itag];
 
     for (jj=0; jj<num_neigh[i]; jj++) {
       j = neigh[i][jj];
 
       if (type[j] == EMP_type) continue;
 
-      del_sAb = agent[sAb][i][0] - agent[sAb][j][0];
+      del_sAb = agent[sAb][i] - agent[sAb][j];
 
       // diffusion of sAb
-      dum = brn->D_sAb * del_sAb;
-      agent[sAb][i][1] -= dum;
-      agent[sAb][j][1] += dum;
+      dum = D_sAb * del_sAb;
+      deriv[sAb][i] -= dum;
+      deriv[sAb][j] += dum;
 
       // only in parenchyma
       if (type[i] != WM_type && type[i] != GM_type) continue;
       if (type[j] != WM_type && type[j] != GM_type) continue;
 
-      del_fAb = agent[fAb][i][0] - agent[fAb][j][0];
-      del_mic = agent[mic][i][0] - agent[mic][j][0];
+      del_fAb = agent[fAb][i] - agent[fAb][j];
+      del_mic = agent[mic][i] - agent[mic][j];
 
       // migration of microglia toward higher sAb concentrations
-      dum = brn->cs * del_sAb;
+      dum = cs * del_sAb;
       if (del_sAb > 0.0)
-        dum *= agent[mic][j][0];
+        dum *= agent[mic][j];
       else
-        dum *= agent[mic][i][0];
+        dum *= agent[mic][i];
 
-      agent[mic][i][1] += dum;
-      agent[mic][j][1] -= dum;
+      deriv[mic][i] += dum;
+      deriv[mic][j] -= dum;
 
       // migration of microglia toward higher fAb concentrations
-      dum = brn->cf * del_fAb;
+      dum = cf * del_fAb;
       if (del_fAb > 0.0)
-        dum *= agent[mic][j][0];
+        dum *= agent[mic][j];
       else
-        dum *= agent[mic][i][0];
+        dum *= agent[mic][i];
 
-      agent[mic][i][1] += dum;
-      agent[mic][j][1] -= dum;
+      deriv[mic][i] += dum;
+      deriv[mic][j] -= dum;
 
       // diffusion of microglia
-      dum = brn->D_mic * del_mic;
-      agent[mic][i][1] -= dum;
-      agent[mic][j][1] += dum;
+      dum = D_mic * del_mic;
+      deriv[mic][i] -= dum;
+      deriv[mic][j] += dum;
     }
 
   }
@@ -152,49 +137,42 @@ void Run::derivatives(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Run::update(Brain *brn) {
+void Brain::update() {
   int i,ag_id;
   double dum;
-
-  int nlocal = brn->nlocal;
-
-  int *type = brn->type;
-  double dt = brn->dt;
-
-  double ***agent = brn->agent;
 
   // update local voxels
   for (i=0; i<nlocal; i++) {
     if (type[i] == EMP_type) continue;
 
-    dum = brn->kp * agent[sAb][i][0] * agent[fAb][i][0]
-        + brn->kn * agent[sAb][i][0] * agent[sAb][i][0];
+    dum = kp * agent[sAb][i] * agent[fAb][i]
+        + kn * agent[sAb][i] * agent[sAb][i];
 
     // sAb
-    agent[sAb][i][1] += agent[neu][i][0] * agent[cir][i][0]
-                      - dum
-                      - brn->ds * agent[mic][i][0] * agent[sAb][i][0];
+    deriv[sAb][i] += agent[neu][i] * agent[cir][i]
+                   - dum
+                   - ds * agent[mic][i] * agent[sAb][i];
     // fAb
-    agent[fAb][i][1] += dum
-                      - brn->df * agent[mic][i][0] * agent[fAb][i][0];
+    deriv[fAb][i] += dum
+                   - df * agent[mic][i] * agent[fAb][i];
 
     // sAb & fAb efflux from CSF
     if (type[i] == CSF_type) {
-      agent[sAb][i][1] -= brn->es * agent[sAb][i][0];
-      agent[fAb][i][1] -= brn->es * agent[fAb][i][0];
+      deriv[sAb][i] -= es * agent[sAb][i];
+      deriv[fAb][i] -= es * agent[fAb][i];
     }
 
     // neuronal death due to astrogliosis
-    agent[neu][i][1] -= (brn->dna * agent[ast][i][0]
-                       + brn->dnf * agent[fAb][i][0]) * agent[neu][i][0];
+    deriv[neu][i] -= (dna * agent[ast][i]
+                   + dnf * agent[fAb][i]) * agent[neu][i];
 
     // astrogliosis
-    dum = agent[fAb][i][0] * agent[mic][i][0];
-    agent[ast][i][1] = brn->ka * (dum / (dum + brn->Ha) - agent[ast][i][0]);
+    dum = agent[fAb][i] * agent[mic][i];
+    deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
 
     // time integration (Euler's scheme)
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      agent[ag_id][i][0] += agent[ag_id][i][1] * dt;
+      agent[ag_id][i] += deriv[ag_id][i] * dt;
 
     //double rsq = sqrt(brn->x[i][0] * brn->x[i][0]
       //              + brn->x[i][1] * brn->x[i][1]

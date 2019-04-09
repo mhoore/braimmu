@@ -171,7 +171,7 @@ void Init::boundaries(Brain *brn) {
   if (!mri_boundaries(brn,brn->nim)) {
     for (i=0; i<3; i++) {
       lbox[i] = boxhi[i] - boxlo[i];
-      nv[i] = static_cast<int>(lbox[i] / vlen);
+      nv[i] = static_cast<int>(lbox[i] * brn->vlen_1);
     }
   }
 
@@ -211,9 +211,6 @@ void Init::voxels(Brain *brn, int allocated) {
          && pos[1] >= xlo[1] && pos[1] < xhi[1]
          && pos[2] >= xlo[2] && pos[2] < xhi[2])
           nlocal++;
-        //else if (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-        //      && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-        //      && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen)
         else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
                 && pos[1] >= xlo[1] && pos[1] < xhi[1]
                 && pos[2] >= xlo[2] && pos[2] < xhi[2])
@@ -264,9 +261,6 @@ void Init::voxels(Brain *brn, int allocated) {
           map[tag[nlocal]] = nlocal;
           nlocal++;
         }
-        //else if (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-        //      && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-        //      && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen) {
         else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
                 && pos[1] >= xlo[1] && pos[1] < xhi[1]
                 && pos[2] >= xlo[2] && pos[2] < xhi[2])
@@ -315,6 +309,10 @@ void Init::voxels(Brain *brn, int allocated) {
   //}
   //printf("Proc %i: %li %li Here2 \n",brn->me, nlocal, nlocal*dsize);
   ////////////////
+
+  // find nvl
+  for (i=0; i<3; i++)
+    brn->nvl[i] = 1 + static_cast<int>( (x[brn->nlocal-1][i] - x[0][i]) * brn->vlen_1 );
 
 }
 
@@ -435,7 +433,7 @@ void Init::allocations(Brain *brn, int allocated) {
     destroy(brn->x);
     destroy(brn->tag);
 
-    destroy(brn->agent);
+    //destroy(brn->agent);
     //destroy(brn->grad);
   }
 
@@ -448,14 +446,24 @@ void Init::allocations(Brain *brn, int allocated) {
   if (!allocated)
     create(brn->map,brn->nvoxel,"map");
 
-  create(brn->agent,num_agents,brn->nall,2,"agent");
+  //create(brn->agent,num_agents,brn->nall,"agent");
+  for (auto &a: brn->agent) {
+    a.clear();
+    a.resize(brn->nall);
+  }
+
+  for (auto &a: brn->deriv) {
+    a.clear();
+    a.resize(brn->nall);
+  }
+
   //create(brn->grad,num_agents,brn->nall,3,"grad");
 
   // set initial values
   for (int ag_id=0; ag_id<num_agents; ag_id++) {
     if (brn->init_val[ag_id] >= 0.0)
       for (int i=0; i<brn->nall; i++)
-        brn->agent[ag_id][i][0] = brn->init_val[ag_id];
+        brn->agent[ag_id][i] = brn->init_val[ag_id];
   }
 
 }
@@ -531,7 +539,6 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   int *map = brn->map;
 
   int *type = brn->type;
-  double ***agent = brn->agent;
 
   double vlen_1 = brn->vlen_1;
 
@@ -652,7 +659,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         if (!arg[j].compare("type"))
           type[i] = (int) round(v_prop[i][j]);
         else if (brn->input->find_agent(arg[j]) >= 0)
-          agent[brn->input->find_agent(arg[j])][i][0] = v_prop[i][j];
+          brn->agent[brn->input->find_agent(arg[j])][i] = v_prop[i][j];
         else {
           printf("Error: mri file content cannot be assigned. arg = %s \n", arg[j].c_str());
           exit(1);
@@ -771,32 +778,32 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           if (v_prop[i] <= 0) {
             type[i] = EMP_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              brn->agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] < thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              brn->agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] > thres_val) {
             type[i] = GM_type;
-            agent[neu][i][0] = (v_prop[i] - thres_val) * coef * max_val;
+            brn->agent[neu][i] = (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
         else if (!mri_arg[tis][0].compare("wm")) {
           if (v_prop[i] > thres_val) {
             type[i] = WM_type;
-            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+            brn->agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
         else if (!mri_arg[tis][0].compare("gm")) {
           if (v_prop[i] > thres_val) {
             type[i] = GM_type;
-            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+            brn->agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
@@ -804,7 +811,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           if (v_prop[i] > thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              brn->agent[ag_id][i] = 0.0;
           }
         }
 
@@ -823,7 +830,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   for (i=0; i<nall; i++)
     if (type[i] == EMP_type) {
       for (int ag_id=0; ag_id<num_agents; ag_id++)
-        agent[ag_id][i][0] = 0.0;
+        brn->agent[ag_id][i] = 0.0;
     }
 
 }

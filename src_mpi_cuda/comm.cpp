@@ -420,25 +420,105 @@ void Comm::forward_pack(Brain *brn, int flag) {
   double vlen = brn->vlen;
   int nlocal = brn->nlocal;
 
-  double *xlo = brn->xlo;
-  double **x = brn->x;
+  int *nvl = brn->nvl;
+
+  //double *xlo = brn->xlo;
+  //double **x = brn->x;
 
   int c = 0;
   send_buf[c++] = ubuf(buf_size[flag]).d;
 
-  for (i=0; i<nlocal; i++) {
-    if (flag == XLO && x[i][0] >= xlo[0] + vlen) continue;
-    else if (flag == YLO && x[i][1] >= xlo[1] + vlen) continue;
-    else if (flag == ZLO && x[i][2] >= xlo[2] + vlen) continue;
+  if (flag == XLO) {
+    int ii = 0;
+    for (int jj=0; jj<nvl[1]; jj++)
+      for (int kk=0; kk<nvl[2]; kk++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  else if (flag == YLO) {
+    int jj = 0;
+    for (int ii=0; ii<nvl[0]; ii++)
+      for (int kk=0; kk<nvl[2]; kk++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+   
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  else if (flag == ZLO) {
+    int kk = 0;
+    for (int ii=0; ii<nvl[0]; ii++)
+      for (int jj=0; jj<nvl[1]; jj++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+    
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  else if (flag == XHI) {
+    int ii = nvl[0] - 1;
+    for (int jj=0; jj<nvl[1]; jj++)
+      for (int kk=0; kk<nvl[2]; kk++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  else if (flag == YHI) {
+    int jj = nvl[1] - 1;
+    for (int ii=0; ii<nvl[0]; ii++)
+      for (int kk=0; kk<nvl[2]; kk++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  else if (flag == ZHI) {
+    int kk = nvl[2] - 1;
+    for (int ii=0; ii<nvl[0]; ii++)
+      for (int jj=0; jj<nvl[1]; jj++) {
+        i = kk + nvl[2] * (jj + nvl[1]*ii);
+
+        send_buf[c++] = ubuf(brn->tag[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
+        for (ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][i];
+      }
+  }
+
+  //for (i=0; i<nlocal; i++) {
+    //if (flag == XLO && x[i][0] >= xlo[0] + vlen) continue;
+    //else if (flag == YLO && x[i][1] >= xlo[1] + vlen) continue;
+    //else if (flag == ZLO && x[i][2] >= xlo[2] + vlen) continue;
 
     //printf("proc %i: pack itag = %li, c=%i, i=%i, buf_size =%i, flag=%i \n",
           // brn->me,brn->tag[i],c,i,buf_size[flag],flag);
 
-    send_buf[c++] = ubuf(brn->tag[i]).d;
-    send_buf[c++] = ubuf(brn->type[i]).d;
-    for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = brn->agent[ag_id][i][0];
-  }
+    //send_buf[c++] = ubuf(brn->tag[i]).d;
+    //send_buf[c++] = ubuf(brn->type[i]).d;
+    //for (ag_id=0; ag_id<num_agents; ag_id++)
+      //send_buf[c++] = brn->agent[ag_id][i][0];
+  //}
 
 }
 
@@ -468,7 +548,7 @@ void Comm::forward_unpack(Brain *brn) {
     if (i != -1) {
       brn->type[i] = (int) ubuf(recv_buf[c++]).i;
       for (ag_id=0; ag_id<num_agents; ag_id++)
-        brn->agent[ag_id][i][0] = recv_buf[c++];
+        brn->agent[ag_id][i] = recv_buf[c++];
     } else
       c += num_agents + 1;
   }
@@ -565,7 +645,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     send_buf[c++] = ubuf(brn->tag[i]).d;
     send_buf[c++] = ubuf(brn->type[i]).d;
     for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = brn->agent[ag_id][i][1];
+      send_buf[c++] = brn->deriv[ag_id][i];
   }
 
 }
@@ -590,7 +670,7 @@ void Comm::reverse_unpack(Brain *brn) {
     if (i != -1) {
       brn->type[i] = (int) ubuf(recv_buf[c++]).i;
       for (ag_id=0; ag_id<num_agents; ag_id++)
-        brn->agent[ag_id][i][1] += recv_buf[c++];
+        brn->deriv[ag_id][i] += recv_buf[c++];
     } else
       c += num_agents + 1;
 
