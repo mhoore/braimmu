@@ -429,6 +429,7 @@ void Init::allocations(Brain *brn, int allocated) {
 
   if (allocated) {
     destroy(brn->type);
+    destroy(brn->is_loc);
     destroy(brn->group);
 
     destroy(brn->x);
@@ -439,10 +440,12 @@ void Init::allocations(Brain *brn, int allocated) {
   }
 
   create(brn->type,brn->nall,"type");
+  create(brn->is_loc,brn->nall,"is_loc");
   create(brn->group,brn->nall,"group");
 
   create(brn->x,brn->nall,3,"x");
   create(brn->tag,brn->nall,"tag");
+  //brn->tag.resize(brn->nall);
 
   if (!allocated)
     create(brn->map,brn->nvoxel,"map");
@@ -540,6 +543,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   int *map = brn->map;
 
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   double vlen_1 = brn->vlen_1;
 
@@ -556,9 +560,10 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     conver_fac = 1.0;
 
   // set all voxel types as EMP_type
-  for (i=0; i<nall; i++)
+  for (i=0; i<nall; i++) {
     type[i] = EMP_type;
-
+    is_loc[i] = 0;
+  }
   /* -------------------------------------------------------
    * set from restart
    * ------------------------------------------------------- */

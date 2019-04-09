@@ -46,10 +46,12 @@ void Output::lammpstrj(Brain *brn) {
   int nproc = brn->nproc;
 
   int nlocal = brn->nlocal;
+  int nall = brn->nall;
   tagint nvoxel = brn->nvoxel;
 
   tagint *tag = brn->tag;
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   double **x = brn->x;
 
@@ -58,7 +60,8 @@ void Output::lammpstrj(Brain *brn) {
 
   // pack
   c = 0;
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if (!is_loc[i]) continue; 
     send_buf[c++] = ubuf(tag[i]).d;
     send_buf[c++] = ubuf(type[i]).d;
 
@@ -149,17 +152,20 @@ void Output::restart(Brain *brn) {
   int nproc = brn->nproc;
 
   int nlocal = brn->nlocal;
+  int nall = brn->nall;
   tagint nvoxel = brn->nvoxel;
 
   tagint *tag = brn->tag;
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   dsize = num_agents + 2;
   create(send_buf,nlocal*dsize,"send_buf");
 
   // pack
   c = 0;
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if(!is_loc[i]) continue;
     send_buf[c++] = ubuf(tag[i]).d;
     send_buf[c++] = ubuf(type[i]).d;
 
@@ -269,11 +275,12 @@ void Output::statistics(Brain *brn) {
   double vlen = brn->vlen;
   double vlen_1 = brn->vlen_1;
 
-  int nlocal = brn->nlocal;
+  int nall = brn->nall;
 
   double **x = brn->x;
 
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   double **agent_val;
   tagint *agent_num;
@@ -289,7 +296,8 @@ void Output::statistics(Brain *brn) {
       agent_num[i] = 0;
     }
 
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if (!is_loc[i]) continue;
     if (type[i] == WM_type || type[i] == GM_type)
       c = 0;
     else if (type[i] == CSF_type)
@@ -374,8 +382,11 @@ void Output::statistics_sphere(Brain *brn) {
   double vlen_1 = brn->vlen_1;
 
   int nlocal = brn->nlocal;
+  int nall = brn->nall;
 
   double **x = brn->x;
+
+  int *is_loc = brn->is_loc;
 
   double **agent_val;
   tagint *agent_num;
@@ -391,7 +402,8 @@ void Output::statistics_sphere(Brain *brn) {
       agent_num[i] = 0;
     }
 
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if(!is_loc[i]) continue;
     c = (tagint) (vlen_1 * sqrt(x[i][0] * x[i][0] + x[i][1] * x[i][1] + x[i][2] * x[i][2]));
     //c = (tagint) (vlen_1 * (x[i][0] - brn->boxlo[0]));
     if (c >= nr) continue;
@@ -497,10 +509,12 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   int nproc = brn->nproc;
 
   int nlocal = brn->nlocal;
+  int nall = brn->nall;
   tagint nvoxel = brn->nvoxel;
 
   double **x = brn->x;
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   dsize = 3;
   c = 3;
@@ -520,7 +534,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
 
   // pack
   c = 0;
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if (!is_loc[i]) continue;
     send_buf[c++] = x[i][0]; // x
     send_buf[c++] = x[i][1]; // y
     send_buf[c++] = x[i][2]; // z
@@ -635,10 +650,12 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   int nproc = brn->nproc;
 
   int nlocal = brn->nlocal;
+  int nall = brn->nall;
   tagint nvoxel = brn->nvoxel;
 
   double **x = brn->x;
   int *type = brn->type;
+  int *is_loc = brn->is_loc;
 
   dsize = 3;
   c = 3;
@@ -660,7 +677,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
   // pack
   c = 0;
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
+    if(!is_loc[i]) continue;
     send_buf[c++] = x[i][0]; // x
     send_buf[c++] = x[i][1]; // y
     send_buf[c++] = x[i][2]; // z

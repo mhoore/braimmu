@@ -116,6 +116,7 @@ void Brain::destroy() {
 
   memory->destroy(x);
   memory->destroy(type);
+  memory->destroy(is_loc);
   memory->destroy(group);
   memory->destroy(tag);
   memory->destroy(map);

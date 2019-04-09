@@ -66,11 +66,12 @@ class Brain {
   double **x; // voxel position
   double vlen, vlen_1, vlen_2, vvol, vvol_1; // voxel size
 
-  int *type, *group;
+  int *type, *group, *is_loc;
 
   //int nbondlist, **bondlist;
 
   tagint *tag; // tag of each voxel
+  //vector<tagint> tag;
   int *map; // mapping from tag to voxel id
 
   int num_neigh_max, num_conn_max; // maximum number of neighbors/connections
