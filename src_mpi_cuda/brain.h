@@ -35,6 +35,7 @@ class Brain {
   void integrate(int);
   void update();
   void derivatives();
+  int find_me(int, int, int);
 
   // classes
   Input *input;

@@ -419,7 +419,6 @@ void Comm::forward_pack(Brain *brn, int flag) {
   int i, ag_id;
 
   double vlen = brn->vlen;
-  int nlocal = brn->nlocal;
 
   int *nvl = brn->nvl;
 

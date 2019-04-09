@@ -35,7 +35,7 @@ void Brain::integrate(int Nrun) {
 
     derivatives();
 
-    comm->reverse_comm(this);
+    //comm->reverse_comm(this);
 
     // communicate bond connections
 
@@ -70,7 +70,7 @@ void Brain::integrate(int Nrun) {
 
 /* ----------------------------------------------------------------------*/
 void Brain::derivatives() {
-  int i,j,jj,ag_id;
+  int ag_id;
   double del_sAb,del_fAb, del_mic;
   double dum;
 
@@ -79,78 +79,94 @@ void Brain::derivatives() {
     for (i=0; i<nall; i++)
       deriv[ag_id][i] = 0.0;
 
-  // spatial derivatives
-
-///////
-  int i = 0;
-  for (int ii=0; ii<nvl[0]; ii++) {
-    pos[0] = x[0][0] + (0.5 + ii) * vlen;
-    for (int jj=0; jj<nvl[1]; jj++) {
-      pos[1] = x[0][1] + (0.5 + jj) * vlen;
-      for (int kk=0; kk<nvl[2]; kk++) {
-        pos[2] = x[0][2] + (0.5 + kk) * vlen;
+  for (int ii=1; ii<nvl[0]-1; ii++)
+    for (int jj=1; jj<nvl[1]-1; jj++)
+      for (int kk=1; kk<nvl[2]; kk++) {
+        int i = kk + nvl[2] * (jj + nvl[1]*ii);        
 
         if (type[i] == EMP_type) continue;
 
+        dum = kp * agent[sAb][i] * agent[fAb][i]
+            + kn * agent[sAb][i] * agent[sAb][i];
 
-        i++;
+        // sAb
+        deriv[sAb][i] += agent[neu][i] * agent[cir][i]
+                       - dum
+                       - ds * agent[mic][i] * agent[sAb][i];
+
+        // fAb
+        deriv[fAb][i] += dum
+                       - df * agent[mic][i] * agent[fAb][i];
+
+        // sAb & fAb efflux from CSF
+        if (type[i] == CSF_type) {
+          deriv[sAb][i] -= es * agent[sAb][i];
+          deriv[fAb][i] -= es * agent[fAb][i];
+        }
+
+        // neuronal death due to astrogliosis
+        deriv[neu][i] -= (dna * agent[ast][i]
+                       + dnf * agent[fAb][i]) * agent[neu][i];
+
+        // astrogliosis
+        dum = agent[fAb][i] * agent[mic][i];
+        deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+
+        // fluxes to the neighboring voxels
+        int neigh[6];
+        neigh[0] = find_me(ii-1,jj,kk);
+        neigh[1] = find_me(ii+1,jj,kk);
+        neigh[2] = find_me(ii,jj-1,kk);
+        neigh[3] = find_me(ii,jj+1,kk);
+        neigh[4] = find_me(ii,jj,kk-1);
+        neigh[5] = find_me(ii,jj,kk+1);
+
+        for (int c=0; c<6; c++) {
+          int j = neigh[c];
+
+          if (type[j] == EMP_type) continue;
+
+          del_sAb = agent[sAb][i] - agent[sAb][j];
+
+          // diffusion of sAb
+          dum = D_sAb * del_sAb;
+          deriv[sAb][i] -= dum;
+          //deriv[sAb][j] += dum;
+
+          // only in parenchyma
+          if (type[i] != WM_type && type[i] != GM_type) continue;
+          if (type[j] != WM_type && type[j] != GM_type) continue;
+
+          del_fAb = agent[fAb][i] - agent[fAb][j];
+          del_mic = agent[mic][i] - agent[mic][j];
+
+          // migration of microglia toward higher sAb concentrations
+          dum = cs * del_sAb;
+          if (del_sAb > 0.0)
+            dum *= agent[mic][j];
+          else
+            dum *= agent[mic][i];
+
+          deriv[mic][i] += dum;
+          //deriv[mic][j] -= dum;
+
+          // migration of microglia toward higher fAb concentrations
+          dum = cf * del_fAb;
+          if (del_fAb > 0.0)
+            dum *= agent[mic][j];
+          else
+            dum *= agent[mic][i];
+
+          deriv[mic][i] += dum;
+          //deriv[mic][j] -= dum;
+
+          // diffusion of microglia
+          dum = D_mic * del_mic;
+          deriv[mic][i] -= dum;
+          //deriv[mic][j] += dum;
+        }
 
       }
-    }
-  }
-
-
-
-    //int ii,jj,kk;
-    //tagint itag = brn->init->find_me(brn,ii,jj,kk);
-    //j = brn->map[itag];
-
-    for (jj=0; jj<num_neigh[i]; jj++) {
-      j = neigh[i][jj];
-
-      if (type[j] == EMP_type) continue;
-
-      del_sAb = agent[sAb][i] - agent[sAb][j];
-
-      // diffusion of sAb
-      dum = D_sAb * del_sAb;
-      deriv[sAb][i] -= dum;
-      deriv[sAb][j] += dum;
-
-      // only in parenchyma
-      if (type[i] != WM_type && type[i] != GM_type) continue;
-      if (type[j] != WM_type && type[j] != GM_type) continue;
-
-      del_fAb = agent[fAb][i] - agent[fAb][j];
-      del_mic = agent[mic][i] - agent[mic][j];
-
-      // migration of microglia toward higher sAb concentrations
-      dum = cs * del_sAb;
-      if (del_sAb > 0.0)
-        dum *= agent[mic][j];
-      else
-        dum *= agent[mic][i];
-
-      deriv[mic][i] += dum;
-      deriv[mic][j] -= dum;
-
-      // migration of microglia toward higher fAb concentrations
-      dum = cf * del_fAb;
-      if (del_fAb > 0.0)
-        dum *= agent[mic][j];
-      else
-        dum *= agent[mic][i];
-
-      deriv[mic][i] += dum;
-      deriv[mic][j] -= dum;
-
-      // diffusion of microglia
-      dum = D_mic * del_mic;
-      deriv[mic][i] -= dum;
-      deriv[mic][j] += dum;
-    }
-
-  }
 
 }
 
@@ -160,48 +176,13 @@ void Brain::update() {
   double dum;
 
   // update local voxels
-  for (i=0; i<nlocal; i++) {
+  for (i=0; i<nall; i++) {
     if (type[i] == EMP_type) continue;
-
-    dum = kp * agent[sAb][i] * agent[fAb][i]
-        + kn * agent[sAb][i] * agent[sAb][i];
-
-    // sAb
-    deriv[sAb][i] += agent[neu][i] * agent[cir][i]
-                   - dum
-                   - ds * agent[mic][i] * agent[sAb][i];
-    // fAb
-    deriv[fAb][i] += dum
-                   - df * agent[mic][i] * agent[fAb][i];
-
-    // sAb & fAb efflux from CSF
-    if (type[i] == CSF_type) {
-      deriv[sAb][i] -= es * agent[sAb][i];
-      deriv[fAb][i] -= es * agent[fAb][i];
-    }
-
-    // neuronal death due to astrogliosis
-    deriv[neu][i] -= (dna * agent[ast][i]
-                   + dnf * agent[fAb][i]) * agent[neu][i];
-
-    // astrogliosis
-    dum = agent[fAb][i] * agent[mic][i];
-    deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+    if (!is_loc[i]) continue;
 
     // time integration (Euler's scheme)
     for (ag_id=0; ag_id<num_agents; ag_id++)
       agent[ag_id][i] += deriv[ag_id][i] * dt;
-
-    //double rsq = sqrt(brn->x[i][0] * brn->x[i][0]
-      //              + brn->x[i][1] * brn->x[i][1]
-        //            + brn->x[i][2] * brn->x[i][2]);
-
-    //if (rsq < 1.0e4)
-      //agent[fAb][i][0] = 1.0e4 - rsq;
-
-    // NOTE: correction: avoid negative values
-    //if (agent[ag_id][i][0] < 0.0)
-      //agent[ag_id][i][0] = 0.0;
 
     //printf("proc %i: HERE grad = %g, dir = %i tag= " TAGINT_FORMAT " \n",
     //       brn->me,grad[neu][j][dir],dir,brn->tag[i]);
@@ -209,3 +190,13 @@ void Brain::update() {
   }
 
 }
+
+/* ----------------------------------------------------------------------
+ *  * Find the id of a voxel from its local coordinates i,j,k
+ *   * ----------------------------------------------------------------------*/
+int Brain::find_me(int i, int j, int k) {
+
+  return k + nvl[2] * (j + nvl[1]*i);
+
+}
+
