@@ -568,20 +568,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
       }
 
     // set pointers to data
-    if (nim->datatype == DT_UINT8)
-      ptr8 = (uint8_t *) nim->data;
-    else if (nim->datatype == DT_INT16)
-      ptr16 = (int16_t *) nim->data;
-    else if (nim->datatype == DT_INT32)
-      ptr32 = (int32_t *) nim->data;
-    else if (nim->datatype == DT_FLOAT32)
-      ptrf = (float *) nim->data;
-    else if (nim->datatype == DT_FLOAT64)
-      ptrd = (double *) nim->data;
-    else {
-      printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim->datatype);
-      exit(1);
-    }
+  auto ptr = NiftyView<double>::fromNIM(nim);
 
     int c = 0;
     for (h=0; h<nim->dim[5]; h++) {
@@ -607,16 +594,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
             // if it is in the partition
             if (vid != -1) {
-              if (nim->datatype == DT_UINT8)
-                v_prop[vid][h] += (double) ptr8[c];
-              else if (nim->datatype == DT_INT16)
-                v_prop[vid][h] += (double) ptr16[c];
-              else if (nim->datatype == DT_INT32)
-                v_prop[vid][h] += (double) ptr32[c];
-              else if (nim->datatype == DT_FLOAT32)
-                v_prop[vid][h] += (double) ptrf[c];
-              else if (nim->datatype == DT_FLOAT64)
-                v_prop[vid][h] += (double) ptrd[c];
+              v_prop[vid][h] += ptr->get(c);
 
               n_prop[vid][h]++;
             }
