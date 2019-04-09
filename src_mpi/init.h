@@ -1,5 +1,4 @@
-#ifndef INIT_H
-#define INIT_H
+#pragma once
 
 #include <vector>
 #include "stdio.h"
@@ -49,5 +48,3 @@ private:
 };
 
 }
-
-#endif

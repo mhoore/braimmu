@@ -1,10 +1,12 @@
+#include "init.h"
+
+#include "pointers.h"
+#include "brain.h"
+
 #include <mpi.h>
 #include <vector>
 #include "math.h"
 
-#include "pointers.h"
-#include "brain.h"
-#include "init.h"
 
 #include <stdint.h>
 
