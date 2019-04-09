@@ -80,8 +80,26 @@ void Brain::derivatives() {
       deriv[ag_id][i] = 0.0;
 
   // spatial derivatives
-  for (i=0; i<nlocal; i++) {
-    if (type[i] == EMP_type) continue;
+
+///////
+  int i = 0;
+  for (int ii=0; ii<nvl[0]; ii++) {
+    pos[0] = x[0][0] + (0.5 + ii) * vlen;
+    for (int jj=0; jj<nvl[1]; jj++) {
+      pos[1] = x[0][1] + (0.5 + jj) * vlen;
+      for (int kk=0; kk<nvl[2]; kk++) {
+        pos[2] = x[0][2] + (0.5 + kk) * vlen;
+
+        if (type[i] == EMP_type) continue;
+
+
+        i++;
+
+      }
+    }
+  }
+
+
 
     //int ii,jj,kk;
     //tagint itag = brn->init->find_me(brn,ii,jj,kk);

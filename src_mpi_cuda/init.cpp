@@ -235,14 +235,14 @@ void Init::voxels(Brain *brn, int allocated) {
 
   double **x = brn->x;
   tagint *tag = brn->tag;
+  int *is_loc = brn->is_loc;
   int *map = brn->map;
 
   for (i=0; i<brn->nvoxel; i++)
     map[i] = -1;
 
   // setup voxel positions, tags, and mapping from tag to id
-  nlocal = nvoxel = 0;
-  nghost = brn->nlocal;
+  size_t nn = 0;
   for (i=0; i<nv[0]; i++) {
     pos[0] = boxlo[0] + (0.5 + i) * vlen;
     for (j=0; j<nv[1]; j++) {
@@ -253,13 +253,13 @@ void Init::voxels(Brain *brn, int allocated) {
         if (pos[0] >= xlo[0] && pos[0] < xhi[0]
          && pos[1] >= xlo[1] && pos[1] < xhi[1]
          && pos[2] >= xlo[2] && pos[2] < xhi[2]) {
-          x[nlocal][0] = pos[0];
-          x[nlocal][1] = pos[1];
-          x[nlocal][2] = pos[2];
-
-          tag[nlocal] = nvoxel;
-          map[tag[nlocal]] = nlocal;
-          nlocal++;
+          x[nn][0] = pos[0];
+          x[nn][1] = pos[1];
+          x[nn][2] = pos[2];
+          is_loc[nn] = 1;
+          tag[nn] = nvoxel;
+          map[tag[nn]] = nn;
+          nn++;
         }
         else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
                 && pos[1] >= xlo[1] && pos[1] < xhi[1]
@@ -271,13 +271,14 @@ void Init::voxels(Brain *brn, int allocated) {
                 && pos[0] >= xlo[0] && pos[0] < xhi[0]
                 && pos[1] >= xlo[1] && pos[1] < xhi[1]) ) {
 
-          x[nghost][0] = pos[0];
-          x[nghost][1] = pos[1];
-          x[nghost][2] = pos[2];
+          x[nn][0] = pos[0];
+          x[nn][1] = pos[1];
+          x[nn][2] = pos[2];
 
-          tag[nghost] = nvoxel;
-          map[tag[nghost]] = nghost;
-          nghost++;
+          is_loc[nn] = 0;
+          tag[nn] = nvoxel;
+          map[tag[nn]] = nn;
+          nn++;
         }
 
         nvoxel++;
@@ -312,7 +313,7 @@ void Init::voxels(Brain *brn, int allocated) {
 
   // find nvl
   for (i=0; i<3; i++)
-    brn->nvl[i] = 1 + static_cast<int>( (x[brn->nlocal-1][i] - x[0][i]) * brn->vlen_1 );
+    brn->nvl[i] = 1 + static_cast<int>( (x[brn->nall-1][i] - x[0][i]) * brn->vlen_1 );
 
 }
 
@@ -650,7 +651,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     }
 
     // set voxel properties based on the nifti_image data
-    for (i=0; i<nlocal; i++) {
+    for (i=0; i<nall; i++) {
       for (j=0; j<nim->dim[5]; j++) {
 
         if (n_prop[i][j] > 0)
@@ -768,7 +769,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
       }
 
       // set voxel properties based on the nifti_image data
-      for (i=0; i<nlocal; i++) {
+      for (i=0; i<nall; i++) {
         if (n_prop[i] > 0)
           v_prop[i] /= n_prop[i];
 
