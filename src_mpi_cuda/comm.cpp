@@ -44,12 +44,12 @@ void Comm::partition(Brain *brn) {
     DX[i] = lbox[i] / npart[i];
 
   int me = 0;
-  for (i=0; i<npart[0]; i++) {
-    pos[0] = boxlo[0] + 0.5*DX[0] + DX[0]*i;
+  for (k=0; k<npart[2]; k++) {
+    pos[2] = boxlo[2] + 0.5*DX[2] + DX[2]*k;
     for (j=0; j<npart[1]; j++) {
       pos[1] = boxlo[1] + 0.5*DX[1] + DX[1]*j;
-      for (k=0; k<npart[2]; k++) {
-        pos[2] = boxlo[2] + 0.5*DX[2] + DX[2]*k;
+      for (i=0; i<npart[0]; i++) {
+        pos[0] = boxlo[0] + 0.5*DX[0] + DX[0]*i;
         if (me == brn->me) {
           POS[0] = pos[0];
           POS[1] = pos[1];
@@ -340,7 +340,17 @@ int Comm::find_me(Brain *brn, int i, int j, int k) {
   if (k < 0 || k >= npart[2])
     return -1;
 
-  return k + npart[2] * (j + npart[1]*i);
+  return i + npart[0] * (j + npart[1]*k);
+
+}
+
+/* ----------------------------------------------------------------------
+ *  * Find the local id of a voxel with coordinates i,j,k
+ *   * ----------------------------------------------------------------------*/
+int Comm::find_id(Brain *brn, int i, int j, int k) {
+  int *nvl = brn->nvl;
+
+  return i + nvl[0] * (j + nvl[1]*k);
 
 }
 
@@ -407,6 +417,59 @@ void Comm::forward_comm(Brain *brn) {
   if (comm_side[ZLO] >= 0)
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
+
+/// X direction
+  if (comm_side[XLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_recv);
+
+  if (comm_side[XHI] >= 0) {
+    forward_pack(brn,XLO);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[XLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn);
+  }
+
+  if (comm_side[XHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+  /// Y direction
+  if (comm_side[YLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_recv);
+
+  if (comm_side[YHI] >= 0) {
+    forward_pack(brn,YHI);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[YLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn);
+  }
+
+  if (comm_side[YHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+
+  /// Z direction
+  if (comm_side[ZLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_recv);
+
+  if (comm_side[ZHI] >= 0) {
+    forward_pack(brn,ZHI);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[ZLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn);
+  }
+
+  if (comm_side[ZHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
 }
 
 /* ----------------------------------------------------------------------
@@ -429,7 +492,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int ii = 0;
     for (int jj=0; jj<nvl[1]; jj++)
       for (int kk=0; kk<nvl[2]; kk++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk); // ii + nvl[0] * (jj + nvl[1]*kk); //// ****
 
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;
@@ -442,7 +505,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int jj = 0;
     for (int ii=0; ii<nvl[0]; ii++)
       for (int kk=0; kk<nvl[2]; kk++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk);
    
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;
@@ -455,7 +518,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int kk = 0;
     for (int ii=0; ii<nvl[0]; ii++)
       for (int jj=0; jj<nvl[1]; jj++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk);
     
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;
@@ -468,7 +531,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int ii = nvl[0] - 1;
     for (int jj=0; jj<nvl[1]; jj++)
       for (int kk=0; kk<nvl[2]; kk++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk);
 
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;
@@ -481,7 +544,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int jj = nvl[1] - 1;
     for (int ii=0; ii<nvl[0]; ii++)
       for (int kk=0; kk<nvl[2]; kk++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk);
 
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;
@@ -494,7 +557,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int kk = nvl[2] - 1;
     for (int ii=0; ii<nvl[0]; ii++)
       for (int jj=0; jj<nvl[1]; jj++) {
-        i = kk + nvl[2] * (jj + nvl[1]*ii);
+        i = find_id(brn,ii,jj,kk);
 
         send_buf[c++] = ubuf(brn->tag[i]).d;
         send_buf[c++] = ubuf(brn->type[i]).d;

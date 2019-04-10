@@ -811,6 +811,8 @@ tagint Output::find_tag(Brain *brn, double x, double y, double z) {
 
   itag = i*nv[1]*nv[2] + j*nv[2] + k;
 
+printf("proc %i: HERE1 "TAGINT_FORMAT", %g %g %g %g %g %g \n",brn->me,itag,x,y,z, boxlo[0],boxlo[1],boxlo[2]);
+
   return itag;
 }
 

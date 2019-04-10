@@ -55,7 +55,7 @@ class Brain {
   int *npart;
   int *nv, *nvl; // number of voxels in each direction, global and local
   tagint nvoxel; // total number of voxels
-  size_t nlocal, nghost, nall; // number of voxels for each core, local/ghost/all
+  int nlocal, nghost, nall; // number of voxels for each core, local/ghost/all
 
   int step, Nrun, Nlog; // step, number of steps, log output
 

@@ -722,9 +722,9 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
     tagint cnim = 0;
     c = 0;
-    for (int ii=0; ii<nim->nx; ii++)
+    for (int kk=0; kk<nim->nz; kk++)
       for (int jj=0; jj<nim->ny; jj++)
-        for (int kk=0; kk<nim->nz; kk++) {
+        for (int ii=0; ii<nim->nx; ii++) {
           c += 3;
 
           aid = 3;
@@ -773,6 +773,8 @@ void Output::sort_tag(Brain *brn, double *data, int dsize) {
     xx[1] = data[ii+1];
     xx[2] = data[ii+2];
 
+  //printf("proc %i: HERE2, %i %i %i %g %g %g \n",brn->me,i,ii,dsize,brn->boxlo[0],brn->boxlo[1],brn->boxlo[2]);
+
     itag = find_tag(brn, xx[0], xx[1], xx[2]);
 
     if (i == itag)
@@ -804,7 +806,9 @@ tagint Output::find_tag(Brain *brn, double x, double y, double z) {
   j = (int) ((y - boxlo[1]) * vlen_1 - 0.5);
   k = (int) ((z - boxlo[2]) * vlen_1 - 0.5);
 
-  itag = i*nv[1]*nv[2] + j*nv[2] + k;
+  itag = i + nv[0] * (j + nv[1]*k);
+
+//printf("proc %i: HERE1 "TAGINT_FORMAT", %g %g %g %g %g %g \n",brn->me,itag,x,y,z, boxlo[0],boxlo[1],boxlo[2]);
 
   return itag;
 }

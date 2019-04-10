@@ -45,7 +45,7 @@ class Comm : public Memory {
 
  private:
   int find_me(class Brain*, int, int, int);
-
+  int find_id(class Brain*, int, int, int);
 };
 
 }

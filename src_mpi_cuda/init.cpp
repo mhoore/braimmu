@@ -200,6 +200,27 @@ void Init::voxels(Brain *brn, int allocated) {
 
   // find nlocal and nghost
   nlocal = nghost = 0;
+  for (k=0; k<nv[2]; k++) {
+    pos[2] = boxlo[2] + (0.5 + k) * vlen;
+    for (j=0; j<nv[1]; j++) {
+      pos[1] = boxlo[1] + (0.5 + j) * vlen;
+      for (i=0; i<nv[0]; i++) {
+        pos[0] = boxlo[0] + (0.5 + i) * vlen;
+
+        if (pos[0] >= xlo[0] && pos[0] < xhi[0]
+         && pos[1] >= xlo[1] && pos[1] < xhi[1]
+         && pos[2] >= xlo[2] && pos[2] < xhi[2])
+          nlocal++;
+        else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen)
+               || (pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen)
+               || (pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen) )
+          nghost++;
+      }
+    }
+  }
+
+
+/*
   for (i=0; i<nv[0]; i++) {
     pos[0] = boxlo[0] + (0.5 + i) * vlen;
     for (j=0; j<nv[1]; j++) {
@@ -218,6 +239,7 @@ void Init::voxels(Brain *brn, int allocated) {
       }
     }
   }
+ * */
 
   nall = nlocal + nghost;
   brn->nlocal = nlocal;
@@ -237,12 +259,12 @@ void Init::voxels(Brain *brn, int allocated) {
   // setup voxel positions, tags, and mapping from tag to id
   size_t nn = 0;
   nvoxel = 0;
-  for (i=0; i<nv[0]; i++) {
-    pos[0] = boxlo[0] + (0.5 + i) * vlen;
+  for (k=0; k<nv[2]; k++) {
+    pos[2] = boxlo[2] + (0.5 + k) * vlen;
     for (j=0; j<nv[1]; j++) {
       pos[1] = boxlo[1] + (0.5 + j) * vlen;
-      for (k=0; k<nv[2]; k++) {
-        pos[2] = boxlo[2] + (0.5 + k) * vlen;
+      for (i=0; i<nv[0]; i++) {
+        pos[0] = boxlo[0] + (0.5 + i) * vlen;
 
         if (pos[0] >= xlo[0] && pos[0] < xhi[0]
          && pos[1] >= xlo[1] && pos[1] < xhi[1]
@@ -406,7 +428,7 @@ tagint Init::find_me(Brain *brn, int i, int j, int k) {
   if (k < 0 || k >= nv[2])
     return -1;
 
-  itag = k + nv[2] * (j + nv[1]*i);
+  itag = i + nv[0] * (j + nv[1]*k);
 
   return itag;
 
@@ -492,6 +514,7 @@ int Init::mri_boundaries(Brain *brn, nifti_image *nim) {
     conver_fac = 1.0;
 
   for (i=0; i<3; i++) {
+printf("HERE1111 %i %g \n", nim->dim[i+1], nim->pixdim[i+1]);
     lbox[i] = nim->dim[i+1] * nim->pixdim[i+1];
     lbox[i] *= conver_fac;
     boxlo[i] = -0.5 * lbox[i];

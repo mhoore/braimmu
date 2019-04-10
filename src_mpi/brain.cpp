@@ -26,7 +26,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
   // output initial step
   if (!me)
     printf("Writing output for the initial step ... \n");
-  output->lammpstrj(this);
+//  output->lammpstrj(this);
 
   if (output->do_dump)
     output->dump(this);

@@ -78,10 +78,10 @@ void Brain::derivatives() {
     for (size_t i=0; i<nall; ++i)
       deriv[ag_id][i] = 0.0;
 
-  for (int ii=1; ii<nvl[0]-1; ++ii)
+  for (int kk=1; kk<nvl[2]-1; ++kk)
     for (int jj=1; jj<nvl[1]-1; ++jj)
-      for (int kk=1; kk<nvl[2]; ++kk) {
-        size_t i = find_me(ii,jj,kk);        
+      for (int ii=1; ii<nvl[0]-1; ++ii) {
+        size_t i = find_me(ii,jj,kk);
 
         if (type[i] == EMP_type) continue;
 
@@ -176,10 +176,10 @@ void Brain::update() {
   // update local voxels
   // time integration (Euler's scheme)
   for (int ag_id=0; ag_id<num_agents; ++ag_id)
-    for (int ii=1; ii<nvl[0]-1; ++ii)
+    for (int kk=1; kk<nvl[2]-1; ++kk)
       for (int jj=1; jj<nvl[1]-1; ++jj) {
-        size_t i = find_me(ii,jj,1);
-        for (int kk=1; kk<nvl[2]; ++kk) {
+        size_t i = find_me(1,jj,kk);
+        for (int ii=1; ii<nvl[0]-1; ++ii) {
           if (type[i] == EMP_type) continue;
           //if (!is_loc[i]) continue;
 
@@ -199,7 +199,7 @@ void Brain::update() {
  *   * ----------------------------------------------------------------------*/
 int Brain::find_me(int i, int j, int k) {
 
-  return k + nvl[2] * (j + nvl[1]*i);
+  return i + nvl[0] * (j + nvl[1]*k);
 
 }
 
