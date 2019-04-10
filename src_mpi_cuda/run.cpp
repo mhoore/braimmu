@@ -70,19 +70,18 @@ void Brain::integrate(int Nrun) {
 
 /* ----------------------------------------------------------------------*/
 void Brain::derivatives() {
-  int ag_id;
   double del_sAb,del_fAb, del_mic;
   double dum;
 
   // set derivatives of all voxels to zero
-  for (ag_id=0; ag_id<num_agents; ag_id++)
-    for (i=0; i<nall; i++)
+  for (int ag_id=0; ag_id<num_agents; ag_id++)
+    for (size_t i=0; i<nall; ++i)
       deriv[ag_id][i] = 0.0;
 
-  for (int ii=1; ii<nvl[0]-1; ii++)
-    for (int jj=1; jj<nvl[1]-1; jj++)
-      for (int kk=1; kk<nvl[2]; kk++) {
-        int i = kk + nvl[2] * (jj + nvl[1]*ii);        
+  for (int ii=1; ii<nvl[0]-1; ++ii)
+    for (int jj=1; jj<nvl[1]-1; ++jj)
+      for (int kk=1; kk<nvl[2]; ++kk) {
+        size_t i = find_me(ii,jj,kk);        
 
         if (type[i] == EMP_type) continue;
 
@@ -113,7 +112,7 @@ void Brain::derivatives() {
         deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
 
         // fluxes to the neighboring voxels
-        int neigh[6];
+        size_t neigh[6];
         neigh[0] = find_me(ii-1,jj,kk);
         neigh[1] = find_me(ii+1,jj,kk);
         neigh[2] = find_me(ii,jj-1,kk);
@@ -121,8 +120,8 @@ void Brain::derivatives() {
         neigh[4] = find_me(ii,jj,kk-1);
         neigh[5] = find_me(ii,jj,kk+1);
 
-        for (int c=0; c<6; c++) {
-          int j = neigh[c];
+        for (int c=0; c<6; ++c) {
+          size_t j = neigh[c];
 
           if (type[j] == EMP_type) continue;
 
@@ -172,22 +171,26 @@ void Brain::derivatives() {
 
 /* ----------------------------------------------------------------------*/
 void Brain::update() {
-  int i,ag_id;
   double dum;
 
   // update local voxels
-  for (i=0; i<nall; i++) {
-    if (type[i] == EMP_type) continue;
-    if (!is_loc[i]) continue;
+  // time integration (Euler's scheme)
+  for (int ag_id=0; ag_id<num_agents; ++ag_id)
+    for (int ii=1; ii<nvl[0]-1; ++ii)
+      for (int jj=1; jj<nvl[1]-1; ++jj) {
+        size_t i = find_me(ii,jj,1);
+        for (int kk=1; kk<nvl[2]; ++kk) {
+          if (type[i] == EMP_type) continue;
+          //if (!is_loc[i]) continue;
 
-    // time integration (Euler's scheme)
-    for (ag_id=0; ag_id<num_agents; ag_id++)
-      agent[ag_id][i] += deriv[ag_id][i] * dt;
+          // time integration (Euler's scheme)
+          agent[ag_id][i] += deriv[ag_id][i] * dt;
 
-    //printf("proc %i: HERE grad = %g, dir = %i tag= " TAGINT_FORMAT " \n",
-    //       brn->me,grad[neu][j][dir],dir,brn->tag[i]);
-
-  }
+          //printf("proc %i: HERE grad = %g, dir = %i tag= " TAGINT_FORMAT " \n",
+          //       brn->me,grad[neu][j][dir],dir,brn->tag[i]);
+	  ++i;
+        }
+      }
 
 }
 
