@@ -109,11 +109,9 @@ void Comm::balance(Brain *brn) {
 
   int nall = brn->nall;
 
-  int *type = brn->type;
-
   nloop_loc = 0;
   for (i=0; i<nall; i++) {
-    if (type[i] == EMP_type) continue;
+    if (brn->type[i] == EMP_type) continue;
     nloop_loc++;
   }
 
@@ -289,7 +287,6 @@ void Comm::comm_init(Brain *brn) {
 
   int nall = brn->nall;
 
-  int *is_loc = brn->is_loc;
   double **x = brn->x;
 
   double *xlo = brn->xlo;
@@ -300,7 +297,7 @@ void Comm::comm_init(Brain *brn) {
   for (flag=0; flag<6; flag++) {
     int c = 0;
     for (i=0; i<nall; i++) {
-      if (is_loc[i]) continue;
+      if (brn->is_loc[i]) continue;
       if (flag == XLO && x[i][0] < xlo[0]) c++;
       else if (flag == XHI && x[i][0] >= xhi[0]) c++;
       else if (flag == YLO && x[i][1] < xlo[1]) c++;
@@ -630,13 +627,11 @@ void Comm::reverse_pack(Brain *brn, int flag) {
   double *xhi = brn->xhi;
   double **x = brn->x;
 
-  int *is_loc = brn->is_loc;
-
   int c = 0;
   send_buf[c++] = ubuf(buf_size[flag]).d;
 
   for (i=0; i<nall; i++) {
-    if (is_loc[i]) continue;
+    if (brn->is_loc[i]) continue;
     if (flag == XHI && x[i][0] < xhi[0]) continue;
     else if (flag == YHI && x[i][1] < xhi[1]) continue;
     else if (flag == ZHI && x[i][2] < xhi[2]) continue;

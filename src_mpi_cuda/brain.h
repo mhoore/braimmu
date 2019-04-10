@@ -67,7 +67,8 @@ class Brain {
   double **x; // voxel position
   double vlen, vlen_1, vlen_2, vvol, vvol_1; // voxel size
 
-  int *type, *group, *is_loc;
+  //int *type, *group, *is_loc;
+  std::vector<int> type, group, is_loc;
 
   //int nbondlist, **bondlist;
 

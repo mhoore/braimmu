@@ -78,8 +78,6 @@ int Region::sphere(Brain *brn, vector<string> arg) {
 
   int nall = brn->nall;
 
-  int *type = brn->type;
-
   double **x = brn->x;
 
   center[0] = stof(arg[1]);
@@ -107,9 +105,9 @@ int Region::sphere(Brain *brn, vector<string> arg) {
         rsq = delx*delx + dely*dely + delz*delz;
 
         if (in && rsq <= radius2)
-          type[i] = type_one;
+          brn->type[i] = type_one;
         else if (!in && rsq > radius2)
-          type[i] = type_one;
+          brn->type[i] = type_one;
       }
     }
 
@@ -149,8 +147,6 @@ int Region::block(Brain *brn, vector<string> arg) {
 
   int nall = brn->nall;
 
-  int *type = brn->type;
-
   double **x = brn->x;
 
   blo[0] = stof(arg[1]);
@@ -174,9 +170,9 @@ int Region::block(Brain *brn, vector<string> arg) {
         if (x[i][0] >= blo[0] && x[i][1] >= blo[1] && x[i][2] >= blo[2] &&
             x[i][0] <= bhi[0] && x[i][1] <= bhi[1] && x[i][2] <= bhi[2]) {
           if (in)
-            type[i] = type_one;
+            brn->type[i] = type_one;
         } else if (!in)
-          type[i] = type_one;
+          brn->type[i] = type_one;
       }
     }
 

@@ -50,8 +50,6 @@ void Output::lammpstrj(Brain *brn) {
   tagint nvoxel = brn->nvoxel;
 
   tagint *tag = brn->tag;
-  int *type = brn->type;
-  int *is_loc = brn->is_loc;
 
   double **x = brn->x;
 
@@ -61,9 +59,9 @@ void Output::lammpstrj(Brain *brn) {
   // pack
   c = 0;
   for (i=0; i<nall; i++) {
-    if (!is_loc[i]) continue; 
+    if (!brn->is_loc[i]) continue; 
     send_buf[c++] = ubuf(tag[i]).d;
-    send_buf[c++] = ubuf(type[i]).d;
+    send_buf[c++] = ubuf(brn->type[i]).d;
 
     send_buf[c++] = x[i][0];
     send_buf[c++] = x[i][1];
@@ -156,8 +154,6 @@ void Output::restart(Brain *brn) {
   tagint nvoxel = brn->nvoxel;
 
   tagint *tag = brn->tag;
-  int *type = brn->type;
-  int *is_loc = brn->is_loc;
 
   dsize = num_agents + 2;
   create(send_buf,nlocal*dsize,"send_buf");
@@ -165,9 +161,9 @@ void Output::restart(Brain *brn) {
   // pack
   c = 0;
   for (i=0; i<nall; i++) {
-    if(!is_loc[i]) continue;
+    if(!brn->is_loc[i]) continue;
     send_buf[c++] = ubuf(tag[i]).d;
-    send_buf[c++] = ubuf(type[i]).d;
+    send_buf[c++] = ubuf(brn->type[i]).d;
 
     for (ag_id=0; ag_id<num_agents; ag_id++)
       send_buf[c++] = brn->agent[ag_id][i];
@@ -279,9 +275,6 @@ void Output::statistics(Brain *brn) {
 
   double **x = brn->x;
 
-  int *type = brn->type;
-  int *is_loc = brn->is_loc;
-
   double **agent_val;
   tagint *agent_num;
 
@@ -297,10 +290,10 @@ void Output::statistics(Brain *brn) {
     }
 
   for (i=0; i<nall; i++) {
-    if (!is_loc[i]) continue;
-    if (type[i] == WM_type || type[i] == GM_type)
+    if (!brn->is_loc[i]) continue;
+    if (brn->type[i] == WM_type || brn->type[i] == GM_type)
       c = 0;
-    else if (type[i] == CSF_type)
+    else if (brn->type[i] == CSF_type)
       c = 1;
     else
       continue;
@@ -386,8 +379,6 @@ void Output::statistics_sphere(Brain *brn) {
 
   double **x = brn->x;
 
-  int *is_loc = brn->is_loc;
-
   double **agent_val;
   tagint *agent_num;
 
@@ -403,7 +394,7 @@ void Output::statistics_sphere(Brain *brn) {
     }
 
   for (i=0; i<nall; i++) {
-    if(!is_loc[i]) continue;
+    if(!brn->is_loc[i]) continue;
     c = (tagint) (vlen_1 * sqrt(x[i][0] * x[i][0] + x[i][1] * x[i][1] + x[i][2] * x[i][2]));
     //c = (tagint) (vlen_1 * (x[i][0] - brn->boxlo[0]));
     if (c >= nr) continue;
@@ -513,8 +504,6 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   tagint nvoxel = brn->nvoxel;
 
   double **x = brn->x;
-  int *type = brn->type;
-  int *is_loc = brn->is_loc;
 
   dsize = 3;
   c = 3;
@@ -535,7 +524,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   // pack
   c = 0;
   for (i=0; i<nall; i++) {
-    if (!is_loc[i]) continue;
+    if (!brn->is_loc[i]) continue;
     send_buf[c++] = x[i][0]; // x
     send_buf[c++] = x[i][1]; // y
     send_buf[c++] = x[i][2]; // z
@@ -544,7 +533,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
     while (aid < arg.size()) {
       ag_id = brn->input->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
-        send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
       else if (ag_id >= 0)
         send_buf[c++] = brn->agent[ag_id][i];
       aid++;
@@ -654,8 +643,6 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   tagint nvoxel = brn->nvoxel;
 
   double **x = brn->x;
-  int *type = brn->type;
-  int *is_loc = brn->is_loc;
 
   dsize = 3;
   c = 3;
@@ -678,7 +665,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   // pack
   c = 0;
   for (i=0; i<nall; i++) {
-    if(!is_loc[i]) continue;
+    if(!brn->is_loc[i]) continue;
     send_buf[c++] = x[i][0]; // x
     send_buf[c++] = x[i][1]; // y
     send_buf[c++] = x[i][2]; // z
@@ -687,7 +674,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
     while (aid < arg.size()) {
       ag_id = brn->input->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
-        send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(brn->type[i]).d;
       else if (!arg[aid].compare("me"))
         send_buf[c++] = ubuf(me).d;
       else if (ag_id >= 0)
@@ -776,7 +763,6 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 /* ----------------------------------------------------------------------*/
 void Output::sort_tag(Brain *brn, double *data, int dsize) {
   tagint i, ii, itag, it;
-  int j;
   double xx[3];
   double dum;
 
@@ -794,7 +780,7 @@ void Output::sort_tag(Brain *brn, double *data, int dsize) {
     else {
       // exchange data
       it = itag*dsize;
-      for (j=0; j<dsize; j++) {
+      for (int j=0; j<dsize; j++) {
         dum = data[it + j];
         data[it + j] = data[ii + j];
         data[ii + j] = dum;
