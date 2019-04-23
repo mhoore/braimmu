@@ -35,16 +35,20 @@ class Init : public Memory {
   int mri_boundaries(class Brain*, nifti_image*);
   void mri_topology(class Brain*, nifti_image*);
 
+  //int map(class Brain*, tagint);
+
   vector<vector<string>> mri_arg;
 
-  tagint find_me(class Brain*, int, int, int);
+private:
+  tagint find_tag(class Brain*, int, int, int);
 
- private:
   uint8_t * ptr8;
   int16_t *ptr16;
   int32_t *ptr32;
   float *ptrf;
   double *ptrd;
+
+  int *map; // map from voxel global id to local id
 
 };
 

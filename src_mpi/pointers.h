@@ -32,8 +32,7 @@ enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
 /// mic, ast, neu; number of microglia, atrocytes, and neurons at each voxel
 /// ilb1, il6, tnf; concentration of cytokines at each voxel
 /// sAb, fAb; concentration of soluble and fibrillar Amyloid beta at each voxel
-const int num_agents = 6;
-enum{mic,neu,sAb,fAb,ast,cir}; // ast,ilb1,il6,tnf
+enum{mic = 0,neu,sAb,fAb,ast,cir, num_agents}; // ast,ilb1,il6,tnf
 const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","cir"}; // "ilb1","il6","tnf"
 
 /// voxel types

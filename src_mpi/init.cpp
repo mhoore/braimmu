@@ -17,20 +17,21 @@ Init::Init() {
 
 /* ----------------------------------------------------------------------*/
 Init::~Init() {
-  int i;
-
-  for (i=0; i<mri_arg.size(); i++) {
+  for (int i=0; i<mri_arg.size(); i++)
     mri_arg[i].clear();
-  }
 
   mri_arg.clear();
+
+  destroy(map);
+
 }
 
 /* ----------------------------------------------------------------------*/
 void Init::setup(Brain *brn) {
   int me = brn->me;
 
-  read_mri(brn);
+  if (mri_arg.size() > 0)
+    read_mri(brn);
 
   if (!me)
     printf("Setup: setting voxels ... \n");
@@ -67,14 +68,11 @@ void Init::setup(Brain *brn) {
  * Read all mri files, respectively in the order of input
  * ----------------------------------------------------------------------*/
 void Init::read_mri(Brain *brn) {
-  int i,j;
-  int narg;
-
   // set the main nifti image based on the first mri input
   brn->nim = nifti_image_read(mri_arg[0][1].c_str(),1);
 
-  for (i=0; i<mri_arg.size(); i++) {
-    narg = mri_arg[i].size();
+  for (int i=0; i<mri_arg.size(); i++) {
+    int narg = mri_arg[i].size();
 
     if (narg < 3){
       printf("Error: read_mri has fewer arguments than required. \n");
@@ -146,8 +144,6 @@ void Init::read_mri(Brain *brn) {
  * Set boundaries, find the total number of voxels
  * ----------------------------------------------------------------------*/
 void Init::boundaries(Brain *brn) {
-  int i;
-
   double vlen = brn->vlen;
 
   int *npart = brn->npart;
@@ -169,9 +165,9 @@ void Init::boundaries(Brain *brn) {
 
   /* Set boundaries based on input mri file if input mri exists. */
   if (!mri_boundaries(brn,brn->nim)) {
-    for (i=0; i<3; i++) {
+    for (int i=0; i<3; i++) {
       lbox[i] = boxhi[i] - boxlo[i];
-      nv[i] = static_cast<int>(lbox[i] / vlen);
+      nv[i] = static_cast<int>( round(lbox[i] / vlen) );
     }
   }
 
@@ -183,8 +179,6 @@ void Init::boundaries(Brain *brn) {
  * Set local and ghost voxels for each partition
  * ----------------------------------------------------------------------*/
 void Init::voxels(Brain *brn, int allocated) {
-  int i,j,k;
-
   tagint nvoxel;
   int nlocal,nghost,nall;
   double pos[3];
@@ -200,29 +194,20 @@ void Init::voxels(Brain *brn, int allocated) {
 
   // find nlocal and nghost
   nlocal = nghost = 0;
-  for (i=0; i<nv[0]; i++) {
-    pos[0] = boxlo[0] + (0.5 + i) * vlen;
-    for (j=0; j<nv[1]; j++) {
+  for (int k=-1; k<nv[2]+1; k++) {
+    pos[2] = boxlo[2] + (0.5 + k) * vlen;
+    for (int j=-1; j<nv[1]+1; j++) {
       pos[1] = boxlo[1] + (0.5 + j) * vlen;
-      for (k=0; k<nv[2]; k++) {
-        pos[2] = boxlo[2] + (0.5 + k) * vlen;
+      for (int i=-1; i<nv[0]+1; i++) {
+        pos[0] = boxlo[0] + (0.5 + i) * vlen;
 
-        if (pos[0] >= xlo[0] && pos[0] < xhi[0]
-         && pos[1] >= xlo[1] && pos[1] < xhi[1]
-         && pos[2] >= xlo[2] && pos[2] < xhi[2])
+        if ( pos[0] >= xlo[0] && pos[0] < xhi[0]
+          && pos[1] >= xlo[1] && pos[1] < xhi[1]
+          && pos[2] >= xlo[2] && pos[2] < xhi[2] )
           nlocal++;
-        //else if (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-        //      && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-        //      && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen)
-        else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-                && pos[1] >= xlo[1] && pos[1] < xhi[1]
-                && pos[2] >= xlo[2] && pos[2] < xhi[2])
-               || (pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-                && pos[0] >= xlo[0] && pos[0] < xhi[0]
-                && pos[2] >= xlo[2] && pos[2] < xhi[2])
-               || (pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen
-                && pos[0] >= xlo[0] && pos[0] < xhi[0]
-                && pos[1] >= xlo[1] && pos[1] < xhi[1]) )
+        else if ( pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
+               && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
+               && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen )
           nghost++;
       }
     }
@@ -238,58 +223,84 @@ void Init::voxels(Brain *brn, int allocated) {
 
   double **x = brn->x;
   tagint *tag = brn->tag;
-  int *map = brn->map;
 
-  for (i=0; i<brn->nvoxel; i++)
+  bool *is_loc = brn->is_loc;
+
+  for (tagint i=0; i<brn->nvoxel; i++)
     map[i] = -1;
 
   // setup voxel positions, tags, and mapping from tag to id
-  nlocal = nvoxel = 0;
-  nghost = brn->nlocal;
-  for (i=0; i<nv[0]; i++) {
-    pos[0] = boxlo[0] + (0.5 + i) * vlen;
-    for (j=0; j<nv[1]; j++) {
+  nvoxel = nall = 0;
+  for (int k=-1; k<nv[2]+1; k++) {
+    pos[2] = boxlo[2] + (0.5 + k) * vlen;
+    for (int j=-1; j<nv[1]+1; j++) {
       pos[1] = boxlo[1] + (0.5 + j) * vlen;
-      for (k=0; k<nv[2]; k++) {
-        pos[2] = boxlo[2] + (0.5 + k) * vlen;
+      for (int i=-1; i<nv[0]+1; i++) {
+        pos[0] = boxlo[0] + (0.5 + i) * vlen;
 
-        if (pos[0] >= xlo[0] && pos[0] < xhi[0]
-         && pos[1] >= xlo[1] && pos[1] < xhi[1]
-         && pos[2] >= xlo[2] && pos[2] < xhi[2]) {
-          x[nlocal][0] = pos[0];
-          x[nlocal][1] = pos[1];
-          x[nlocal][2] = pos[2];
+        if ( pos[0] >= xlo[0] && pos[0] < xhi[0]
+          && pos[1] >= xlo[1] && pos[1] < xhi[1]
+          && pos[2] >= xlo[2] && pos[2] < xhi[2] ) {
+          x[nall][0] = pos[0];
+          x[nall][1] = pos[1];
+          x[nall][2] = pos[2];
 
-          tag[nlocal] = nvoxel;
-          map[tag[nlocal]] = nlocal;
-          nlocal++;
-        }
-        //else if (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-        //      && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-        //      && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen) {
-        else if ( (pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
-                && pos[1] >= xlo[1] && pos[1] < xhi[1]
-                && pos[2] >= xlo[2] && pos[2] < xhi[2])
-               || (pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
-                && pos[0] >= xlo[0] && pos[0] < xhi[0]
-                && pos[2] >= xlo[2] && pos[2] < xhi[2])
-               || (pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen
-                && pos[0] >= xlo[0] && pos[0] < xhi[0]
-                && pos[1] >= xlo[1] && pos[1] < xhi[1]) ) {
-
-          x[nghost][0] = pos[0];
-          x[nghost][1] = pos[1];
-          x[nghost][2] = pos[2];
-
-          tag[nghost] = nvoxel;
-          map[tag[nghost]] = nghost;
-          nghost++;
+          tag[nall] = nvoxel;
+          is_loc[nall] = 1;
+          map[nvoxel] = nall;
+          nall++;
         }
 
-        nvoxel++;
+        else if ( pos[0] >= xlo[0] - vlen && pos[0] < xhi[0] + vlen
+               && pos[1] >= xlo[1] - vlen && pos[1] < xhi[1] + vlen
+               && pos[2] >= xlo[2] - vlen && pos[2] < xhi[2] + vlen ) {
+          x[nall][0] = pos[0];
+          x[nall][1] = pos[1];
+          x[nall][2] = pos[2];
+
+          if (k>=0 && k<nv[2]
+           && j>=0 && j<nv[1]
+           && i>=0 && i<nv[0]) {
+            tag[nall] = nvoxel;
+            map[nvoxel] = nall;
+          }
+          else
+            tag[nall] = -1;
+
+          is_loc[nall] = 0;
+          nall++;
+        }
+
+        if (k>=0 && k<nv[2]
+         && j>=0 && j<nv[1]
+         && i>=0 && i<nv[0])
+          nvoxel++;
       }
     }
   }
+
+  // set nvl
+  for (int i=0; i<3; i++)
+    brn->nvl[i] =
+        static_cast<int>( round( (x[brn->nall - 1][i] - x[0][i]) * brn->vlen_1 ) ) - 1;
+
+/*
+  for (int kk=0; kk<brn->nvl[2]+2; kk++)
+    for (int jj=0; jj<brn->nvl[1]+2; jj++)
+      for (int ii=0; ii<brn->nvl[0]+2; ii++) {
+        int i = brn->run->find_id(brn,ii,jj,kk);
+
+        int j0 = static_cast<int>( round((x[i][1] - boxlo[1]) * brn->vlen_1 - 0.5) );
+        int i0 = static_cast<int>( round((x[i][0] - boxlo[0]) * brn->vlen_1 - 0.5) );
+        int k0 = static_cast<int>( round((x[i][2] - boxlo[2]) * brn->vlen_1 - 0.5) );
+
+        printf("proc %i: HERE1 i=%i, %i %i %i, ijk = %i,%i,%i, loc=%i \n",
+               brn->me, i,
+               i0, j0, k0,
+               ii,jj,kk,
+               brn->is_loc[i]);
+      }
+*/
 
   // set topology based on mri input if it exists.
   mri_topology(brn,brn->nim);
@@ -305,15 +316,9 @@ void Init::voxels(Brain *brn, int allocated) {
   MPI_Allreduce(&nlocal_tmp,&nvoxel,1,MPI_LONG_LONG,MPI_SUM,MPI_COMM_WORLD);
   if (nvoxel != brn->nvoxel) {
     printf("Error222: voxels setup went wrong. proc %i: nvoxel = %li, brn->nvoxel = %li \n",
-           brn->me,nvoxel,brn->nvoxel);
+          brn->me,nvoxel,brn->nvoxel);
     exit(1);
   }
-  //if (brn->nlocal < nvl[0]*nvl[1]*nvl[2]) {
-  //  printf("Error333: voxels setup went wrong. proc %i: nlocal = %i, nvl = %i %i %i \n",
-  //         brn->me,brn->nlocal,nvl[0],nvl[1],nvl[2]);
-  //  exit(1);
-  //}
-  //printf("Proc %i: %li %li Here2 \n",brn->me, nlocal, nlocal*dsize);
   ////////////////
 
 }
@@ -324,93 +329,68 @@ void Init::voxels(Brain *brn, int allocated) {
  * three neighbors are automatically taken into account from other voxels.
  * ----------------------------------------------------------------------*/
 void Init::neighbor(Brain *brn) {
-  tagint ii,jj,kk,itag;
-  int i,j;
-  //double dr,delx,dely,delz;
-
-  int nlocal = brn->nlocal;
-  //int nall = brn->nall;
+  int nall = brn->nall;
 
   double **x = brn->x;
-  int *map = brn->map;
 
   double vlen_1 = brn->vlen_1;
   double *boxlo = brn->boxlo;
 
+  bool *is_loc = brn->is_loc;
+
   brn->num_neigh_max = 3;
 
-  create(brn->num_neigh,nlocal,"num_neigh");
-  create(brn->neigh,nlocal,brn->num_neigh_max,"neigh");
+  create(brn->num_neigh,nall,"num_neigh");
+  create(brn->neigh,nall,brn->num_neigh_max,"neigh");
 
   int *num_neigh = brn->num_neigh;
   int **neigh = brn->neigh;
 
   // only one voxel has the info of the neighboring
-  for (i=0; i<nlocal; i++) {
+  for (int i=0; i<nall; i++) {
     num_neigh[i] = 0;
 
-    ii = (int) ( (x[i][0] - boxlo[0]) * vlen_1 - 0.5 );
-    jj = (int) ( (x[i][1] - boxlo[1]) * vlen_1 - 0.5 );
-    kk = (int) ( (x[i][2] - boxlo[2]) * vlen_1 - 0.5 );
+    if (!is_loc[i]) continue;
 
-    itag = find_me(brn,ii+1,jj,kk);
+    int ii = static_cast<int>( (x[i][0] - boxlo[0]) * vlen_1 - 0.5 );
+    int jj = static_cast<int>( (x[i][1] - boxlo[1]) * vlen_1 - 0.5 );
+    int kk = static_cast<int>( (x[i][2] - boxlo[2]) * vlen_1 - 0.5 );
+
+    tagint itag = find_tag(brn,ii+1,jj,kk);
     if (itag != -1) {
-      j = map[itag];
-      neigh[i][num_neigh[i]] = j;
+      neigh[i][num_neigh[i]] = map[itag];
       num_neigh[i]++;
     }
 
-    itag = find_me(brn,ii,jj+1,kk);
+    itag = find_tag(brn,ii,jj+1,kk);
     if (itag != -1) {
-      j = map[itag];
-      neigh[i][num_neigh[i]] = j;
+      neigh[i][num_neigh[i]] = map[itag];
       num_neigh[i]++;
     }
 
-    itag = find_me(brn,ii,jj,kk+1);
+    itag = find_tag(brn,ii,jj,kk+1);
     if (itag != -1) {
-      j = map[itag];
-      neigh[i][num_neigh[i]] = j;
+      neigh[i][num_neigh[i]] = map[itag];
       num_neigh[i]++;
     }
 
     /// DEBUG
     ////////////////
-    if (brn->tag[i] != find_me(brn,ii,jj,kk)) {
+    if (brn->tag[i] != find_tag(brn,ii,jj,kk)) {
       printf("Error: neighboring. proc %i: " TAGINT_FORMAT " " TAGINT_FORMAT " \n",
-             brn->me,brn->tag[i],find_me(brn,ii,jj,kk));
+             brn->me,brn->tag[i],find_tag(brn,ii,jj,kk));
       exit(1);
     }
    ///////
-    //for (j=0; j<nall; j++) {
-      //delx = (x[j][0] - x[i][0]) * vlen_1;
-      //if (delx < 0.0) continue;
-      //if (delx > 1.1) continue;
-
-      //dely = (x[j][1] - x[i][1]) * vlen_1;
-      //if (dely < 0.0) continue;
-      //if (dely > 1.1) continue;
-
-      //delz = (x[j][2] - x[i][2]) * vlen_1;
-      //if (delz < 0.0) continue;
-      //if (delz > 1.1) continue;
-
-      //dr = sqrt(delx*delx + dely*dely + delz*delz);
-      //if (dr > 1.1) continue;
-
-      //neigh[i][num_neigh[i]] = j;
-      //num_neigh[i]++;
-      //}
   }
 
 }
 
 /* ----------------------------------------------------------------------
- * Find the tag of a voxel from its coordinates i,j,k
+ * Find the tag of a voxel from its global coordinates i,j,k
  * ----------------------------------------------------------------------*/
-tagint Init::find_me(Brain *brn, int i, int j, int k) {
+tagint Init::find_tag(Brain *brn, int i, int j, int k) {
   int *nv = brn->nv;
-  tagint itag;
 
   if (i < 0 || i >= nv[0])
     return -1;
@@ -419,9 +399,7 @@ tagint Init::find_me(Brain *brn, int i, int j, int k) {
   if (k < 0 || k >= nv[2])
     return -1;
 
-  itag = k + nv[2] * (j + nv[1]*i);
-
-  return itag;
+  return i + nv[0] * (j + nv[1]*k);
 
 }
 
@@ -431,31 +409,33 @@ void Init::allocations(Brain *brn, int allocated) {
   if (allocated) {
     destroy(brn->type);
     destroy(brn->group);
+    destroy(brn->is_loc);
 
     destroy(brn->x);
     destroy(brn->tag);
 
     destroy(brn->agent);
-    //destroy(brn->grad);
+    destroy(brn->deriv);
   }
 
   create(brn->type,brn->nall,"type");
   create(brn->group,brn->nall,"group");
+  create(brn->is_loc,brn->nall,"is_loc");
 
   create(brn->x,brn->nall,3,"x");
   create(brn->tag,brn->nall,"tag");
 
-  if (!allocated)
-    create(brn->map,brn->nvoxel,"map");
+  create(brn->agent,num_agents,brn->nall,"agent");
+  create(brn->deriv,num_agents,brn->nall,"deriv");
 
-  create(brn->agent,num_agents,brn->nall,2,"agent");
-  //create(brn->grad,num_agents,brn->nall,3,"grad");
+  if (!allocated)
+    create(map,brn->nvoxel,"map");
 
   // set initial values
   for (int ag_id=0; ag_id<num_agents; ag_id++) {
     if (brn->init_val[ag_id] >= 0.0)
       for (int i=0; i<brn->nall; i++)
-        brn->agent[ag_id][i][0] = brn->init_val[ag_id];
+        brn->agent[ag_id][i] = brn->init_val[ag_id];
   }
 
 }
@@ -477,8 +457,6 @@ int Init::mri_boundaries(Brain *brn, nifti_image *nim) {
   if (!nim)
     return 0;
 
-  int i;
-
   double vlen = brn->vlen;
 
   int *nv = brn->nv;
@@ -495,13 +473,13 @@ int Init::mri_boundaries(Brain *brn, nifti_image *nim) {
   else if (nim->xyz_units == NIFTI_UNITS_MICRON)
     conver_fac = 1.0;
 
-  for (i=0; i<3; i++) {
+  for (int i=0; i<3; i++) {
     lbox[i] = nim->dim[i+1] * nim->pixdim[i+1];
     lbox[i] *= conver_fac;
     boxlo[i] = -0.5 * lbox[i];
     boxhi[i] = 0.5 * lbox[i];
 
-    nv[i] = static_cast<int>(lbox[i] / vlen);
+    nv[i] = static_cast<int>( round(lbox[i] / vlen) );
 
   }
 
@@ -523,21 +501,12 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   if (!nim)
     return;
 
-  int i,j,k,h;
-
-  int nlocal = brn->nlocal;
   int nall = brn->nall;
 
-  int *map = brn->map;
-
   int *type = brn->type;
-  double ***agent = brn->agent;
+  double **agent = brn->agent;
 
   double vlen_1 = brn->vlen_1;
-
-  int ii,jj,kk,vid;
-  double dum;
-  tagint itag;
 
   double conver_fac = 1.0;
   if (nim->xyz_units == NIFTI_UNITS_METER)
@@ -548,7 +517,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     conver_fac = 1.0;
 
   // set all voxel types as EMP_type
-  for (i=0; i<nall; i++)
+  for (int i=0; i<nall; i++)
     type[i] = EMP_type;
 
   /* -------------------------------------------------------
@@ -561,8 +530,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     brn->memory->create(v_prop,nall,nim->dim[5],"init:v_prop");
     brn->memory->create(n_prop,nall,nim->dim[5],"init:n_prop");
 
-    for (i=0; i<nall; i++)
-      for (j=0; j<nim->dim[5]; j++) {
+    for (int i=0; i<nall; i++)
+      for (int j=0; j<nim->dim[5]; j++) {
         v_prop[i][j] = 0.0;
         n_prop[i][j] = 0;
       }
@@ -584,39 +553,37 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     }
 
     int c = 0;
-    for (h=0; h<nim->dim[5]; h++) {
-      for (k=0; k<nim->dim[3]; k++) {
-        dum = nim->pixdim[3] * k * conver_fac;
-        kk = (int) (dum * vlen_1);
+    for (int h=0; h<nim->dim[5]; h++) {
+      for (int k=0; k<nim->dim[3]; k++) {
+        int kk = static_cast<int>( round(nim->pixdim[3] * k * conver_fac * vlen_1) );
 
-        for (j=0; j<nim->dim[2]; j++) {
-          dum = nim->pixdim[2] * j * conver_fac;
-          jj = (int) (dum * vlen_1);
+        for (int j=0; j<nim->dim[2]; j++) {
+          int jj = static_cast<int>( round(nim->pixdim[2] * j * conver_fac * vlen_1) );
 
-          for (i=0; i<nim->dim[1]; i++) {
-            dum = nim->pixdim[1] * i * conver_fac;
-            ii = (int) (dum * vlen_1);
+          for (int i=0; i<nim->dim[1]; i++) {
+            int ii = static_cast<int>( round(nim->pixdim[1] * i * conver_fac * vlen_1) );
 
-            itag = find_me(brn,ii,jj,kk);
+            tagint itag = find_tag(brn,ii,jj,kk);
             if (itag == -1) {
               //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
               c++;
               continue;
             }
-            vid = map[itag];
+
+            int vid = map[itag];
 
             // if it is in the partition
             if (vid != -1) {
               if (nim->datatype == DT_UINT8)
-                v_prop[vid][h] += (double) ptr8[c];
+                v_prop[vid][h] += static_cast<double>(ptr8[c]);
               else if (nim->datatype == DT_INT16)
-                v_prop[vid][h] += (double) ptr16[c];
+                v_prop[vid][h] += static_cast<double>(ptr16[c]);
               else if (nim->datatype == DT_INT32)
-                v_prop[vid][h] += (double) ptr32[c];
+                v_prop[vid][h] += static_cast<double>(ptr32[c]);
               else if (nim->datatype == DT_FLOAT32)
-                v_prop[vid][h] += (double) ptrf[c];
+                v_prop[vid][h] += static_cast<double>(ptrf[c]);
               else if (nim->datatype == DT_FLOAT64)
-                v_prop[vid][h] += (double) ptrd[c];
+                v_prop[vid][h] += static_cast<double>(ptrd[c]);
 
               n_prop[vid][h]++;
             }
@@ -643,16 +610,16 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     }
 
     // set voxel properties based on the nifti_image data
-    for (i=0; i<nlocal; i++) {
-      for (j=0; j<nim->dim[5]; j++) {
+    for (int i=0; i<nall; i++) {
+      for (int j=0; j<nim->dim[5]; j++) {
 
         if (n_prop[i][j] > 0)
           v_prop[i][j] /= n_prop[i][j];
 
         if (!arg[j].compare("type"))
-          type[i] = (int) round(v_prop[i][j]);
+          type[i] = static_cast<int>( round(v_prop[i][j]) );
         else if (brn->input->find_agent(arg[j]) >= 0)
-          agent[brn->input->find_agent(arg[j])][i][0] = v_prop[i][j];
+          agent[brn->input->find_agent(arg[j])][i] = v_prop[i][j];
         else {
           printf("Error: mri file content cannot be assigned. arg = %s \n", arg[j].c_str());
           exit(1);
@@ -707,47 +674,47 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         exit(1);
       }
 
-      for (i=0; i<nall; i++) {
+      for (int i=0; i<nall; i++) {
         v_prop[i] = 0.0;
         n_prop[i] = 0;
       }
 
       int c = 0;
-      for (k=0; k<nim_tmp->dim[3]; k++) {
-        dum = nim_tmp->pixdim[3] * k * conver_fac;
-        kk = (int) (dum * vlen_1);
+      for (int k=0; k<nim_tmp->dim[3]; k++) {
+        int kk = static_cast<int>( round(nim_tmp->pixdim[3] * k * conver_fac * vlen_1) );
 
-        for (j=0; j<nim_tmp->dim[2]; j++) {
-          dum = nim_tmp->pixdim[2] * j * conver_fac;
-          jj = (int) (dum * vlen_1);
+        for (int j=0; j<nim_tmp->dim[2]; j++) {
+          int jj = static_cast<int>( round(nim_tmp->pixdim[2] * j * conver_fac * vlen_1) );
 
-          for (i=0; i<nim_tmp->dim[1]; i++) {
-            dum = nim_tmp->pixdim[1] * i * conver_fac;
-            ii = (int) (dum * vlen_1);
+          for (int i=0; i<nim_tmp->dim[1]; i++) {
+            int ii = static_cast<int>( round(nim_tmp->pixdim[1] * i * conver_fac * vlen_1) );
 
-            itag = find_me(brn,ii,jj,kk);
+            tagint itag = find_tag(brn,ii,jj,kk);
             if (itag == -1) {
               //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
               c++;
               continue;
             }
-            vid = map[itag];
 
-            double uint8coef = 1.0 / ((double) UINT8_MAX);
-            double int16coef = 1.0 / ((double) INT16_MAX - (double) INT16_MIN);
-            double int32coef = 1.0 / ((double) INT32_MAX - (double) INT32_MIN);
+            int vid = map[itag];
+
+            double uint8coef = 1.0 / static_cast<double>(UINT8_MAX);
+            double int16coef = 1.0 / (static_cast<double>(INT16_MAX)
+                                      - static_cast<double>(INT16_MIN));
+            double int32coef = 1.0 / (static_cast<double>(INT32_MAX)
+                                      - static_cast<double>(INT32_MIN));
             // if it is in the partition
             if (vid != -1) {
               if (nim_tmp->datatype == DT_UINT8)
-                v_prop[vid] += (double) ptr8[c] * uint8coef;
+                v_prop[vid] += static_cast<double>(ptr8[c]) * uint8coef;
               else if (nim_tmp->datatype == DT_INT16)
-                v_prop[vid] += ((double) (ptr16[c] - INT16_MIN)) * int16coef;
+                v_prop[vid] += ( static_cast<double>(ptr16[c] - INT16_MIN) ) * int16coef;
               else if (nim_tmp->datatype == DT_INT32)
-                v_prop[vid] += ((double) (ptr32[c] - INT32_MIN)) * int32coef;
+                v_prop[vid] += ( static_cast<double>(ptr32[c] - INT32_MIN) ) * int32coef;
               else if (nim_tmp->datatype == DT_FLOAT32)
-                v_prop[vid] += (double) ptrf[c];
+                v_prop[vid] += static_cast<double>(ptrf[c]);
               else if (nim_tmp->datatype == DT_FLOAT64)
-                v_prop[vid] += (double) ptrd[c];
+                v_prop[vid] += static_cast<double>(ptrd[c]);
               n_prop[vid]++;
 
               //printf("HERE: proc %i: vid = %i, v_prop[vid] = %g, ptr16[c] = %i, c = %i, %i \n",
@@ -761,7 +728,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
       }
 
       // set voxel properties based on the nifti_image data
-      for (i=0; i<nlocal; i++) {
+      for (int i=0; i<nall; i++) {
+
         if (n_prop[i] > 0)
           v_prop[i] /= n_prop[i];
 
@@ -771,32 +739,32 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           if (v_prop[i] <= 0) {
             type[i] = EMP_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] < thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] > thres_val) {
             type[i] = GM_type;
-            agent[neu][i][0] = (v_prop[i] - thres_val) * coef * max_val;
+            agent[neu][i] = (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
         else if (!mri_arg[tis][0].compare("wm")) {
           if (v_prop[i] > thres_val) {
             type[i] = WM_type;
-            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+            agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
         else if (!mri_arg[tis][0].compare("gm")) {
           if (v_prop[i] > thres_val) {
             type[i] = GM_type;
-            agent[neu][i][0] += (v_prop[i] - thres_val) * coef * max_val;
+            agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
 
@@ -804,7 +772,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           if (v_prop[i] > thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
-              agent[ag_id][i][0] = 0.0;
+              agent[ag_id][i] = 0.0;
           }
         }
 
@@ -820,79 +788,58 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   }
 
   // set all values to zero for EMT_type voxels
-  for (i=0; i<nall; i++)
+  for (int i=0; i<nall; i++)
     if (type[i] == EMP_type) {
       for (int ag_id=0; ag_id<num_agents; ag_id++)
-        agent[ag_id][i][0] = 0.0;
+        agent[ag_id][i] = 0.0;
     }
 
 }
 
 /* ----------------------------------------------------------------------
- * Using map function rather than map array (pointer) for less memory usage
- * purpose. Otherwise, the map array is a faster process.
+ * Mapping from voxel (global) tag to (local) id
  * ----------------------------------------------------------------------*/
 /*
-int map(Brain*, tagint); // mapping from tag to id
-
-// find approximate nvl
-double dx[3];
-for (i=0; i<3; i++) {
-  dx[i] = xhi[i] - xlo[i];
-  nvl[i] = (int) (dx[i] * brn->vlen_1);
-  if ((0.5 + nvl[i]) * vlen < dx[i])
-    nvl[i] += 1;
-}
-
 int Init::map(Brain *brn, tagint itag) {
-  tagint dumt;
-  int i,j,k,istart;
-
-  double pos[3],dx[3];
-
-  double vlen = brn->vlen;
-  double vlen_1 = brn->vlen_1;
-
-  int *nvl = brn->nvl;
-
-  double *boxlo = brn->boxlo;
-  double *xlo = brn->xlo;
-  double *xhi = brn->xhi;
-
   int *nv = brn->nv;
 
-  tagint *tag = brn->tag;
+  /// find global cooerdinate indices i,j,k from the voxel tag
+  int k = itag / (nv[0]*nv[1]);
+  tagint dumt = itag % (nv[0]*nv[1]);
+  int j = dumt / nv[0];
+  int i = dumt % nv[0];
 
-  i = (int) (itag / (nv[1]*nv[2]));
-  dumt = itag % (nv[1]*nv[2]);
-  j = (int) (dumt / nv[2]);
-  k = dumt % nv[2];
+  /// find the global coordinates x,y,z from global indices i,j,k
+  double *boxlo = brn->boxlo;
+  double vlen = brn->vlen;
+  double pos[3];
 
-  pos[0] = boxlo[0] + (0.5 + i) * vlen;
-  pos[1] = boxlo[1] + (0.5 + j) * vlen;
-  pos[2] = boxlo[2] + (0.5 + k) * vlen;
+  pos[0] = boxlo[0] + vlen * (0.5 + i);
+  pos[1] = boxlo[1] + vlen * (0.5 + j);
+  pos[2] = boxlo[2] + vlen * (0.5 + k);
 
-  if (pos[0] < xhi[0] && pos[1] < xhi[1] && pos[2] < xhi[2]) {
-    dx[0] = pos[0] - xlo[0] + 0.5;
-    dx[1] = pos[1] - xlo[1] + 0.5;
-    dx[2] = pos[2] - xlo[2] + 0.5;
+  /// find the local id from global coordinates x,y,z
+  double *xlo = brn->xlo;
+  double *xhi = brn->xhi;
+  double vlen_1 = brn->vlen_1;
 
-    i = (int) (dx[0] * vlen_1);
-    j = (int) (dx[1] * vlen_1);
-    k = (int) (dx[2] * vlen_1);
+  int vid = -1;
 
-    istart = i*nvl[1]*nvl[2] + j*nvl[2] + k;
+  if (pos[0] >= xlo[0] - vlen && pos[1] >= xlo[1] - vlen && pos[2] >= xlo[2] - vlen
+   && pos[0] < xhi[0] + vlen && pos[1] < xhi[1] + vlen && pos[2] < xhi[2] + vlen) {
+    int ii = static_cast<int>( (pos[0] - xlo[0] + vlen) * vlen_1 );
+    int jj = static_cast<int>( (pos[1] - xlo[1] + vlen) * vlen_1 );
+    int kk = static_cast<int>( (pos[2] - xlo[2] + vlen) * vlen_1 );
+
+    int *nvl = brn->nvl;
+    vid = ii + (nvl[0] + 2) * (jj + (nvl[1] + 2) * kk);
+
+    //printf("proc %i: HERE2 vid = %i, tag = " TAGINT_FORMAT ","
+      //               " ijk = %i %i %i, iijjkk = %i %i %i, nvl = %i %i %i \n",
+        //   brn->me, vid , itag, i,j,k, ii,jj,kk, nvl[0],nvl[1],nvl[2]);
   }
-  else if (pos[0] < xhi[0] + vlen && pos[1] < xhi[1] + vlen && pos[2] < xhi[2] + vlen)
-     istart = brn->nlocal;
-  else
-    return -1;
 
-  for (i=istart; i<brn->nall; i++)
-    if (tag[i] == itag)
-      return i;
-
-  return -1;
+  return vid;
 
 }
 */

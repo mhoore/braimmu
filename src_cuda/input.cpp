@@ -317,24 +317,20 @@ int Input::read_parameters(Brain *brn) {
  * Read MRI image (.nii) to define the spatial domain of the simulation.
  * ----------------------------------------------------------------------*/
 void Input::read_mri(Brain *brn) {
-  int i,j;
-
   brn->init->mri_arg.push_back(vector<string>());
-  i = brn->init->mri_arg.size() - 1;
+  int i = brn->init->mri_arg.size() - 1;
 
-  for (j=0; j<narg; j++)
+  for (int j=0; j<narg; j++)
     brn->init->mri_arg[i].push_back((*arg)[j]);
 
 }
 
 /* ----------------------------------------------------------------------*/
 void Input::read_region(Brain *brn) {
-  int i,j;
-
   brn->region->reg_arg.push_back(vector<string>());
-  i = brn->region->reg_arg.size() - 1;
+  int i = brn->region->reg_arg.size() - 1;
 
-  for (j=0; j<narg; j++)
+  for (int j=0; j<narg; j++)
     brn->region->reg_arg[i].push_back((*arg)[j]);
 
 }
@@ -376,12 +372,10 @@ int Input::read_statistics(Brain *brn) {
 
 /* ----------------------------------------------------------------------*/
 int Input::read_dump(Brain *brn) {
-  int i,j;
-
   brn->output->dump_arg.push_back(vector<string>());
-  i = brn->output->dump_arg.size() - 1;
+  int i = brn->output->dump_arg.size() - 1;
 
-  for (j=0; j<narg; j++)
+  for (int j=0; j<narg; j++)
     brn->output->dump_arg[i].push_back((*arg)[j]);
 
   brn->output->do_dump = true;
@@ -402,10 +396,9 @@ int Input::read_dump(Brain *brn) {
 
 /* ----------------------------------------------------------------------*/
 int Input::find_agent(string str) {
-  int ag_id, ag_found;
-  ag_found = -1;
+  int ag_found = -1;
 
-  for (ag_id=0; ag_id<num_agents; ag_id++)
+  for (int ag_id=0; ag_id<num_agents; ag_id++)
     if (!str.compare(ag_str[ag_id]))
       ag_found = ag_id;
 

@@ -28,15 +28,15 @@ class Comm : public Memory {
 
   void forward_comm(class Brain*);
   void forward_pack(class Brain*, int);
-  void forward_unpack(class Brain*);
+  void forward_unpack(class Brain*, int);
 
   void reverse_comm(class Brain*);
   void reverse_pack(class Brain*, int);
-  void reverse_unpack(class Brain*);
+  void reverse_unpack(class Brain*, int);
 
   void allocations(class Brain*);
 
-  int comm_side[6],buf_size[6];
+  int comm_side[6];
   double *send_buf,*recv_buf;
   int comm_size, max_buf_size;
 

@@ -24,6 +24,8 @@ class Run {
   void update(class Brain*);
   void derivatives(Brain *brn);
 
+  int find_id(class Brain*, int, int, int);
+
 };
 
 }

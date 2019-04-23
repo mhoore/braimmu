@@ -24,9 +24,9 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
   input->file(arg[1], this);
 
   // output initial step
-  //if (!me)
-  //  printf("Writing output for the initial step ... \n");
-  //output->lammpstrj(this);
+  if (!me)
+    printf("Writing output for the initial step ... \n");
+//  output->lammpstrj(this);
 
   if (output->do_dump)
     output->dump(this);
@@ -116,13 +116,9 @@ void Brain::destroy() {
 
   memory->destroy(x);
   memory->destroy(tag);
-  memory->destroy(map);
 
   memory->destroy(num_neigh);
   memory->destroy(neigh);
-
-  //memory->destroy(agent);
-  //memory->destroy(grad);
 
   if(nim)
     nifti_image_free(nim);

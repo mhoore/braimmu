@@ -1,6 +1,5 @@
 SHELL = /bin/sh
 # specify flags and libraries needed for your compiler
-
 CC=mpicxx
 CCFLAGS=-g -O3 -std=c++11
 LDFLAGS=

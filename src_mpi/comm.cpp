@@ -13,7 +13,7 @@ Comm::Comm() {
   b_itr = 0;
   b_dim.assign("none");
 
-  comm_size = 2 + num_agents;
+  comm_size = 1 + num_agents;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -28,7 +28,6 @@ Comm::~Comm() {
  * and its communicating neighbor partitions.
  * ----------------------------------------------------------------------*/
 void Comm::partition(Brain *brn) {
-  int i,j,k;
   double pos[3],POS[3],DX[3];
 
   int *npart = brn->npart;
@@ -40,16 +39,16 @@ void Comm::partition(Brain *brn) {
 
   double *lbox = brn->lbox;
 
-  for (i=0; i<3; i++)
+  for (int i=0; i<3; i++)
     DX[i] = lbox[i] / npart[i];
 
   int me = 0;
-  for (i=0; i<npart[0]; i++) {
-    pos[0] = boxlo[0] + 0.5*DX[0] + DX[0]*i;
-    for (j=0; j<npart[1]; j++) {
+  for (int k=0; k<npart[2]; k++) {
+    pos[2] = boxlo[2] + 0.5*DX[2] + DX[2]*k;
+    for (int j=0; j<npart[1]; j++) {
       pos[1] = boxlo[1] + 0.5*DX[1] + DX[1]*j;
-      for (k=0; k<npart[2]; k++) {
-        pos[2] = boxlo[2] + 0.5*DX[2] + DX[2]*k;
+      for (int i=0; i<npart[0]; i++) {
+        pos[0] = boxlo[0] + 0.5*DX[0] + DX[0]*i;
         if (me == brn->me) {
           POS[0] = pos[0];
           POS[1] = pos[1];
@@ -68,7 +67,7 @@ void Comm::partition(Brain *brn) {
     }
   }
 
-  for (i=0; i<3; i++) {
+  for (int i=0; i<3; i++) {
     xlo[i] = POS[i] - 0.5*DX[i];
     xhi[i] = POS[i] + 0.5*DX[i];
   }
@@ -80,7 +79,7 @@ void Comm::partition(Brain *brn) {
  * dimension, dim;
  * ----------------------------------------------------------------------*/
 void Comm::balance(Brain *brn) {
-  int b_flag, cid, sid;
+  int b_flag;
 
   if (!b_dim.compare("x"))
     b_flag = 0;
@@ -93,7 +92,6 @@ void Comm::balance(Brain *brn) {
     exit(1);
   }
 
-  int i,j,k;
   int nloop_loc;
 
   int me = brn->me;
@@ -107,13 +105,15 @@ void Comm::balance(Brain *brn) {
   double *xlo = brn->xlo;
   double *xhi = brn->xhi;
 
-  int nlocal = brn->nlocal;
+  int nall = brn->nall;
 
   int *type = brn->type;
+  bool *is_loc = brn->is_loc;
 
   nloop_loc = 0;
-  for (i=0; i<nlocal; i++) {
+  for (int i=0; i<nall; i++) {
     if (type[i] == EMP_type) continue;
+    if (!is_loc[i]) continue;
     nloop_loc++;
   }
 
@@ -136,7 +136,7 @@ void Comm::balance(Brain *brn) {
   s_buf[2] = xhi[b_flag];
 
   int offset = 0;
-  for (i = 0; i < nproc; i++) {
+  for (int i = 0; i < nproc; i++) {
     rcounts[i] = dsize;
     displs[i] = offset;
     offset += rcounts[i];
@@ -159,7 +159,7 @@ void Comm::balance(Brain *brn) {
   create(xhi_all,nproc,"comm:xhi_all");
 
   int c = 0;
-  for (i=0; i<nproc; i++) {
+  for (int i=0; i<nproc; i++) {
     c = i*dsize;
     nloop[i] = (int) ubuf(r_buf[c]).i;
     xlo_all[i] = r_buf[c+1];
@@ -178,23 +178,24 @@ void Comm::balance(Brain *brn) {
   create(xhi_sec,npart[b_flag],"comm:xhi_sec");
   create(n_sec,npart[b_flag],"comm:n_sec");
 
-  for (i=0; i<npart[b_flag]; i++) {
+  for (int i=0; i<npart[b_flag]; i++) {
     n_sec[i] = 0;
     nloop_sec[i] = 0.0;
   }
 
-  for (i=0; i<npart[0]; i++) {
-    if (b_flag == 0)
-      sid = i;
-    for (j=0; j<npart[1]; j++) {
+  int sid;
+  for (int k=0; k<npart[2]; k++) {
+    if (b_flag == 2)
+      sid = k;
+    for (int j=0; j<npart[1]; j++) {
       if (b_flag == 1)
         sid = j;
-      for (k=0; k<npart[2]; k++) {
-        if (b_flag == 2)
-          sid = k;
+      for (int i=0; i<npart[0]; i++) {
+        if (b_flag == 0)
+          sid = i;
 
-        cid = find_me(brn,i,j,k);
-        nloop_sec[sid] += (double)(nloop[cid]);
+        int cid = find_me(brn,i,j,k);
+        nloop_sec[sid] += static_cast<double>(nloop[cid]);
         xlo_sec[sid] = xlo_all[cid];
         xhi_sec[sid] = xhi_all[cid];
         n_sec[sid]++;
@@ -203,7 +204,7 @@ void Comm::balance(Brain *brn) {
   }
 
   double nloop_avg = 0.0;
-  for (i=0; i<npart[b_flag]; i++) {
+  for (int i=0; i<npart[b_flag]; i++) {
     nloop_sec[i] /= n_sec[i];
     nloop_avg += nloop_sec[i];
   }
@@ -218,9 +219,10 @@ void Comm::balance(Brain *brn) {
   create(xlo_new,npart[b_flag],"comm:xlo_new");
   create(xhi_new,npart[b_flag],"comm:xhi_new");
 
-  double dum = (double)(nv[b_flag]) / brn->nvoxel * brn->vlen;
+  double dum = static_cast<double>(nv[b_flag]) / brn->nvoxel * brn->vlen;
 
   xlo_new[0] = xlo_sec[0];
+  int i;
   for (i=0; i<npart[b_flag]; i++) {
     correction = (nloop_avg - nloop_sec[i]) * dum;
     lx = xhi_sec[i] - xlo_sec[i];
@@ -232,10 +234,10 @@ void Comm::balance(Brain *brn) {
   xhi_new[i] = xhi_sec[i];
 
   // set the new xlo and xhi
-  int dumi;
-  i = (int) (me / (npart[1]*npart[2]));
+  int j,k,dumi;
+  i = static_cast<int>(me / (npart[1]*npart[2]));
   dumi = me % (npart[1]*npart[2]);
-  j = (int) (dumi / npart[2]);
+  j = static_cast<int>(dumi / npart[2]);
   k = dumi % npart[2];
 
   if (b_flag == 0)
@@ -244,9 +246,6 @@ void Comm::balance(Brain *brn) {
     sid = j;
   if (b_flag == 2)
     sid = k;
-
-  //for (i=0; i<npart[b_flag]; i++)
-  //  printf("proc %i: HERE sec %i, %g %g  %g %g \n",me,i,xlo[b_flag],xhi[b_flag],xlo_new[i],xhi_new[i]);
 
   xlo[b_flag] = xlo_new[sid];
   xhi[b_flag] = xhi_new[sid];
@@ -261,8 +260,6 @@ void Comm::balance(Brain *brn) {
   if (!me)
     printf("Balance: unevenness ratio (max/min) before balancing = %g \n",
            (float)(nloop_max)/nloop_min);
-
-  //printf("proc %i: HERE %g %g  %g %g  %g %g \n",me, xlo[0], xhi[0], xlo[1], xhi[1], xlo[2], xhi[2]);
 
   destroy(nloop);
   destroy(xlo_all);
@@ -285,37 +282,20 @@ void Comm::balance(Brain *brn) {
  * communication.
  * ----------------------------------------------------------------------*/
 void Comm::comm_init(Brain *brn) {
-  int i,flag;
+  int *nvl = brn->nvl;
 
-  int nlocal = brn->nlocal;
-  int nall = brn->nall;
+  // set buffer size for each direction of communication
+  int buf_size[3];
+  buf_size[0] = nvl[1] * nvl[2] * comm_size;
+  buf_size[1] = nvl[0] * nvl[2] * comm_size;
+  buf_size[2] = nvl[0] * nvl[1] * comm_size;
 
-  double **x = brn->x;
+  max_buf_size = buf_size[0];
+  for (int flag=1; flag<3; flag++)
+    if (max_buf_size < buf_size[flag])
+      max_buf_size = buf_size[flag];
 
-  double *xlo = brn->xlo;
-  double *xhi = brn->xhi;
-
-  // find buffer size
-  max_buf_size = 0;
-  for (flag=0; flag<6; flag++) {
-    int c = 0;
-    for (i=nlocal; i<nall; i++) {
-      if (flag == XLO && x[i][0] < xlo[0]) c++;
-      else if (flag == XHI && x[i][0] >= xhi[0]) c++;
-      else if (flag == YLO && x[i][1] < xlo[1]) c++;
-      else if (flag == YHI && x[i][1] >= xhi[1]) c++;
-      else if (flag == ZLO && x[i][2] < xlo[2]) c++;
-      else if (flag == ZHI && x[i][2] >= xhi[2]) c++;
-    }
-
-    if (c > max_buf_size)
-      max_buf_size = c;
-    buf_size[flag] = c * comm_size;
-  }
-
-  max_buf_size *= comm_size;
-
-  int dum = max_buf_size + 1; // the first element of buffer is buf_size
+  int dum = max_buf_size;
   // set max of max_buf_size as a universal communication size
   MPI_Allreduce(&dum,&max_buf_size,1,MPI_INT,MPI_MAX,brn->world);
 
@@ -342,7 +322,7 @@ int Comm::find_me(Brain *brn, int i, int j, int k) {
   if (k < 0 || k >= npart[2])
     return -1;
 
-  return k + npart[2] * (j + npart[1]*i);
+  return i + npart[0] * (j + npart[1]*k);
 
 }
 
@@ -368,7 +348,7 @@ void Comm::forward_comm(Brain *brn) {
 
   if (comm_side[XHI] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    forward_unpack(brn);
+    forward_unpack(brn,XHI);
   }
 
   if (comm_side[XLO] >= 0)
@@ -385,7 +365,7 @@ void Comm::forward_comm(Brain *brn) {
 
   if (comm_side[YHI] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    forward_unpack(brn);
+    forward_unpack(brn,YHI);
   }
 
   if (comm_side[YLO] >= 0)
@@ -403,7 +383,7 @@ void Comm::forward_comm(Brain *brn) {
 
   if (comm_side[ZHI] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    forward_unpack(brn);
+    forward_unpack(brn,ZHI);
   }
 
   if (comm_side[ZLO] >= 0)
@@ -415,29 +395,80 @@ void Comm::forward_comm(Brain *brn) {
  * Packing the buffer for forward communication
  * ----------------------------------------------------------------------*/
 void Comm::forward_pack(Brain *brn, int flag) {
-  int i, ag_id;
+  int *nvl = brn->nvl;
 
-  double vlen = brn->vlen;
-  int nlocal = brn->nlocal;
+  tagint c = 0;
 
-  double *xlo = brn->xlo;
-  double **x = brn->x;
+  if (flag == XLO) {
+    int i = 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-  int c = 0;
-  send_buf[c++] = ubuf(buf_size[flag]).d;
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
+  }
 
-  for (i=0; i<nlocal; i++) {
-    if (flag == XLO && x[i][0] >= xlo[0] + vlen) continue;
-    else if (flag == YLO && x[i][1] >= xlo[1] + vlen) continue;
-    else if (flag == ZLO && x[i][2] >= xlo[2] + vlen) continue;
+  else if (flag == XHI) {
+    int i = nvl[0];
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-    //printf("proc %i: pack itag = %li, c=%i, i=%i, buf_size =%i, flag=%i \n",
-          // brn->me,brn->tag[i],c,i,buf_size[flag],flag);
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
+  }
 
-    send_buf[c++] = ubuf(brn->tag[i]).d;
-    send_buf[c++] = ubuf(brn->type[i]).d;
-    for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = brn->agent[ag_id][i][0];
+  else if (flag == YLO) {
+    int j = 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
+  }
+
+  else if (flag == YHI) {
+    int j = nvl[1];
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
+  }
+
+  else if (flag == ZLO) {
+    int k = 1;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
+  }
+
+  else if (flag == ZHI) {
+    int k = nvl[2];
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->agent[ag_id][vid];
+      }
   }
 
 }
@@ -445,32 +476,81 @@ void Comm::forward_pack(Brain *brn, int flag) {
 /* ----------------------------------------------------------------------
  * Unpacking the buffer for forward communication
  * ----------------------------------------------------------------------*/
-void Comm::forward_unpack(Brain *brn) {
-  int i, ag_id;
-  tagint itag;
+void Comm::forward_unpack(Brain *brn, int flag) {
+  int *nvl = brn->nvl;
 
-  int c = 0;
-  int size_unpack = (int) ubuf(recv_buf[c++]).i;
+  tagint c = 0;
 
-  while (c <= size_unpack) {
-    itag = (tagint) ubuf(recv_buf[c++]).i;
-    i = brn->map[itag];
+  if (flag == XLO) {
+    int i = 0;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-    // //////DEBUG/////////////////////
-    //if (brn->me == 0) {
-    //  printf("HERE %i " TAGINT_FORMAT " size_unpack=%i \n",i,itag, size_unpack);
-    //}
-    // //////DEBUG/////////////////////
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
+  }
 
-    //printf("proc %i: unpack itag = %li, c=%i, i=%i, buf_size =%i \n",
-      //     brn->me,itag,c,i,size_unpack);
+  else if (flag == XHI) {
+    int i = nvl[0] + 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-    if (i != -1) {
-      brn->type[i] = (int) ubuf(recv_buf[c++]).i;
-      for (ag_id=0; ag_id<num_agents; ag_id++)
-        brn->agent[ag_id][i][0] = recv_buf[c++];
-    } else
-      c += num_agents + 1;
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
+  }
+
+  else if (flag == YLO) {
+    int j = 0;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
+  }
+
+  else if (flag == YHI) {
+    int j = nvl[1] + 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
+  }
+
+  else if (flag == ZLO) {
+    int k = 0;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
+  }
+
+  else if (flag == ZHI) {
+    int k = nvl[2] + 1;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->agent[ag_id][vid] = recv_buf[c++];
+      }
   }
 
 }
@@ -497,7 +577,7 @@ void Comm::reverse_comm(Brain *brn) {
 
   if (comm_side[XLO] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    reverse_unpack(brn);
+    reverse_unpack(brn,XLO);
   }
 
   if (comm_side[XHI] >= 0)
@@ -514,7 +594,7 @@ void Comm::reverse_comm(Brain *brn) {
 
   if (comm_side[YLO] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    reverse_unpack(brn);
+    reverse_unpack(brn,YLO);
   }
 
   if (comm_side[YHI] >= 0)
@@ -532,7 +612,7 @@ void Comm::reverse_comm(Brain *brn) {
 
   if (comm_side[ZLO] >= 0) {
     MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
-    reverse_unpack(brn);
+    reverse_unpack(brn,ZLO);
   }
 
   if (comm_side[ZHI] >= 0)
@@ -543,29 +623,80 @@ void Comm::reverse_comm(Brain *brn) {
  * Packing the buffer for reverse communication
  * ----------------------------------------------------------------------*/
 void Comm::reverse_pack(Brain *brn, int flag) {
-  int i, ag_id;
+  int *nvl = brn->nvl;
 
-  int nlocal = brn->nlocal;
-  int nall = brn->nall;
+  tagint c = 0;
 
-  double *xhi = brn->xhi;
-  double **x = brn->x;
+  if (flag == XLO) {
+    int i = 0;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-  int c = 0;
-  send_buf[c++] = ubuf(buf_size[flag]).d;
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
+  }
 
-  for (i=nlocal; i<nall; i++) {
-    if (flag == XHI && x[i][0] < xhi[0]) continue;
-    else if (flag == YHI && x[i][1] < xhi[1]) continue;
-    else if (flag == ZHI && x[i][2] < xhi[2]) continue;
+  else if (flag == XHI) {
+    int i = nvl[0] + 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-    //printf("proc %i: pack itag = %li, c=%i, i=%i, buf_size =%i \n",
-      //     brn->me,brn->tag[i],c,i,buf_size[flag]);
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
+  }
 
-    send_buf[c++] = ubuf(brn->tag[i]).d;
-    send_buf[c++] = ubuf(brn->type[i]).d;
-    for (ag_id=0; ag_id<num_agents; ag_id++)
-      send_buf[c++] = brn->agent[ag_id][i][1];
+  else if (flag == YLO) {
+    int j = 0;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
+  }
+
+  else if (flag == YHI) {
+    int j = nvl[1] + 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
+  }
+
+  else if (flag == ZLO) {
+    int k = 0;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
+  }
+
+  else if (flag == ZHI) {
+    int k = nvl[2] + 1;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        send_buf[c++] = ubuf(brn->type[vid]).d;
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          send_buf[c++] = brn->deriv[ag_id][vid];
+      }
   }
 
 }
@@ -573,27 +704,81 @@ void Comm::reverse_pack(Brain *brn, int flag) {
 /* ----------------------------------------------------------------------
  * Unpacking the buffer for reverse communication
  * ----------------------------------------------------------------------*/
-void Comm::reverse_unpack(Brain *brn) {
-  int i, ag_id;
-  tagint itag;
+void Comm::reverse_unpack(Brain *brn, int flag) {
+  int *nvl = brn->nvl;
 
-  int c = 0;
-  int unpack_size = (int) ubuf(recv_buf[c++]).i;
+  tagint c = 0;
 
-  while (c <= unpack_size) {
-    itag = (tagint) ubuf(recv_buf[c++]).i;
-    i = brn->map[itag];
+  if (flag == XLO) {
+    int i = 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
-    //printf("proc %i: unpack itag = %li, c=%i, i=%i, buf_size =%i \n",
-         //  brn->me,itag,c-1,i,unpack_size);
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
+  }
 
-    if (i != -1) {
-      brn->type[i] = (int) ubuf(recv_buf[c++]).i;
-      for (ag_id=0; ag_id<num_agents; ag_id++)
-        brn->agent[ag_id][i][1] += recv_buf[c++];
-    } else
-      c += num_agents + 1;
+  else if (flag == XHI) {
+    int i = nvl[0];
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int j=1; j<nvl[1]+1; j++) {
+        int vid = brn->run->find_id(brn,i,j,k);
 
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
+  }
+
+  else if (flag == YLO) {
+    int j = 1;
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
+  }
+
+  else if (flag == YHI) {
+    int j = nvl[1];
+    for (int k=1; k<nvl[2]+1; k++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
+  }
+
+  else if (flag == ZLO) {
+    int k = 1;
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
+  }
+
+  else if (flag == ZHI) {
+    int k = nvl[2];
+    for (int j=1; j<nvl[1]+1; j++)
+      for (int i=1; i<nvl[0]+1; i++) {
+        int vid = brn->run->find_id(brn,i,j,k);
+
+        brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
+        for (int ag_id=0; ag_id<num_agents; ag_id++)
+          brn->deriv[ag_id][vid] += recv_buf[c++];
+      }
   }
 
 }

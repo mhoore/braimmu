@@ -82,6 +82,7 @@ void Brain::allocations() {
   es = 0.0;
 
   memory->create(nv,3,"nv");
+  memory->create(nvl,3,"nvl");
   memory->create(npart,3,"npart");
 
   memory->create(boxlo,3,"boxlo");
@@ -105,6 +106,7 @@ void Brain::allocations() {
 /* ----------------------------------------------------------------------*/
 void Brain::destroy() {
   memory->destroy(nv);
+  memory->destroy(nvl);
   memory->destroy(npart);
 
   memory->destroy(boxlo);
@@ -117,14 +119,14 @@ void Brain::destroy() {
   memory->destroy(x);
   memory->destroy(type);
   memory->destroy(group);
+  memory->destroy(is_loc);
   memory->destroy(tag);
-  memory->destroy(map);
 
   memory->destroy(num_neigh);
   memory->destroy(neigh);
 
   memory->destroy(agent);
-  //memory->destroy(grad);
+  memory->destroy(deriv);
 
   if(nim)
     nifti_image_free(nim);

@@ -1,7 +1,7 @@
 ## Input file
 ## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
 
-partition 3 4 1
+partition 1 4 1
 num_conn_max 10 # maximum number of bond connections
 
 timestep 0.001 # day
@@ -37,12 +37,16 @@ read_mri wm wm.nii 0.3 1.0e7
 read_mri gm gm.nii 0.25 1.0e8
 read_mri csf csf.nii 0.2 1.0
 
+#region sphere 0.0 0.0 0.0 4.99e4 out type -1
+#region sphere 0.0 0.0 0.0 4.99e4 in type 1
+#region sphere 0.0 0.0 0.0 1.0e3 in mic 1.0e6
+
 #balance y 20
 
 ## outputs
-dump mri 1 dump. mic neu sAb fAb ast type
-statistics 1 stat.dat
+dump mri 100 dump. mic neu sAb fAb ast type
+statistics 100 stat.dat
 
-log 1
-run 1
+log 10
+run 100
 setup

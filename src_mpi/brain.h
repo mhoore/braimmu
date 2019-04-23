@@ -50,7 +50,7 @@ class Brain {
   //Output *output;
 
   int *npart;
-  int *nv;
+  int *nv, *nvl; // number of voxels in each dimension, global and local
   tagint nvoxel; // total number of voxels
   int nlocal, nghost, nall; // number of voxels for each core, local/ghost/all
 
@@ -65,11 +65,11 @@ class Brain {
   double vlen, vlen_1, vlen_2, vvol, vvol_1; // voxel size
 
   int *type, *group;
+  bool *is_loc; // local voxel = 1, ghost voxel = 0
 
   //int nbondlist, **bondlist;
 
   tagint *tag; // tag of each voxel
-  int *map; // mapping from tag to voxel id
 
   int num_neigh_max, num_conn_max; // maximum number of neighbors/connections
   int *num_neigh, *num_conn; // number of neighbors, number of long-range connections
@@ -80,8 +80,7 @@ class Brain {
   nifti_image *nim;
 
   /// model parameters
-  double ***agent; // agents
-  //double ***grad; // gradients
+  double **agent, **deriv; // agents and their time derivatives
   double init_val[num_agents];
   double D_sAb, diff_sAb; // diffusivity of sAb
   double D_mic, diff_mic; // diffusivity of microglia
