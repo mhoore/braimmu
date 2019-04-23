@@ -20,7 +20,8 @@ void Brain::integrate(int Nrun) {
 
     derivatives();
 
-    comm->reverse_comm(this);
+    if (newton_flux)
+      comm->reverse_comm(this);
 
     // communicate bond connections
 
@@ -67,64 +68,6 @@ void Brain::derivatives() {
         int i = find_id(ii,jj,kk);
         if (type[i] == EMP_type) continue;
 
-        for (int hh=0; hh<num_neigh[i]; hh++) {
-          int j = neigh[i][hh];
-
-          if (type[j] == EMP_type) continue;
-
-          double del_sAb = agent[sAb][i] - agent[sAb][j];
-
-          // diffusion of sAb
-          double dum = D_sAb * del_sAb;
-          deriv[sAb][i] -= dum;
-          deriv[sAb][j] += dum;
-
-          // only in parenchyma
-          if (type[i] != WM_type && type[i] != GM_type) continue;
-          if (type[j] != WM_type && type[j] != GM_type) continue;
-
-          double del_fAb = agent[fAb][i] - agent[fAb][j];
-          double del_mic = agent[mic][i] - agent[mic][j];
-
-          // migration of microglia toward higher sAb concentrations
-          dum = cs * del_sAb;
-          if (del_sAb > 0.0)
-            dum *= agent[mic][j];
-          else
-            dum *= agent[mic][i];
-
-          deriv[mic][i] += dum;
-          deriv[mic][j] -= dum;
-
-          // migration of microglia toward higher fAb concentrations
-          dum = cf * del_fAb;
-          if (del_fAb > 0.0)
-            dum *= agent[mic][j];
-          else
-            dum *= agent[mic][i];
-
-          deriv[mic][i] += dum;
-          deriv[mic][j] -= dum;
-
-          // diffusion of microglia
-          dum = D_mic * del_mic;
-          deriv[mic][i] -= dum;
-          deriv[mic][j] += dum;
-        }
-      }
-
-}
-
-/* ----------------------------------------------------------------------*/
-void Brain::update() {
-
-  // update local voxels
-  for (int kk=1; kk<nvl[2]+1; kk++)
-    for (int jj=1; jj<nvl[1]+1; jj++)
-      for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = find_id(ii,jj,kk);
-        if (type[i] == EMP_type) continue;
-
         double dum = kp * agent[sAb][i] * agent[fAb][i]
                    + kn * agent[sAb][i] * agent[sAb][i];
 
@@ -149,6 +92,82 @@ void Brain::update() {
         // astrogliosis
         dum = agent[fAb][i] * agent[mic][i];
         deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+
+        /// fluxes
+        int n_ngh, ngh[6];
+        ngh[0] = find_id(ii+1,jj,kk);
+        ngh[1] = find_id(ii,jj+1,kk);
+        ngh[2] = find_id(ii,jj,kk+1);
+        n_ngh = 3;
+
+        if (!newton_flux) {
+          ngh[3] = find_id(ii-1,jj,kk);
+          ngh[4] = find_id(ii,jj-1,kk);
+          ngh[5] = find_id(ii,jj,kk-1);
+          n_ngh = 6;
+        }
+
+        for (int c=0; c<n_ngh; ++c) {
+          int j = ngh[c];
+
+          if (type[j] == EMP_type) continue;
+
+          double del_sAb = agent[sAb][i] - agent[sAb][j];
+
+          // diffusion of sAb
+          double dum = D_sAb * del_sAb;
+          deriv[sAb][i] -= dum;
+          if (newton_flux)
+            deriv[sAb][j] += dum;
+
+          // only in parenchyma
+          if (type[i] != WM_type && type[i] != GM_type) continue;
+          if (type[j] != WM_type && type[j] != GM_type) continue;
+
+          double del_fAb = agent[fAb][i] - agent[fAb][j];
+          double del_mic = agent[mic][i] - agent[mic][j];
+
+          // migration of microglia toward higher sAb concentrations
+          dum = cs * del_sAb;
+          if (del_sAb > 0.0)
+            dum *= agent[mic][j];
+          else
+            dum *= agent[mic][i];
+
+          deriv[mic][i] += dum;
+          if (newton_flux)
+            deriv[mic][j] -= dum;
+
+          // migration of microglia toward higher fAb concentrations
+          dum = cf * del_fAb;
+          if (del_fAb > 0.0)
+            dum *= agent[mic][j];
+          else
+            dum *= agent[mic][i];
+
+          deriv[mic][i] += dum;
+          if (newton_flux)
+            deriv[mic][j] -= dum;
+
+          // diffusion of microglia
+          dum = D_mic * del_mic;
+          deriv[mic][i] -= dum;
+          if (newton_flux)
+            deriv[mic][j] += dum;
+        }
+      }
+
+}
+
+/* ----------------------------------------------------------------------*/
+void Brain::update() {
+
+  // update local voxels
+  for (int kk=1; kk<nvl[2]+1; kk++)
+    for (int jj=1; jj<nvl[1]+1; jj++)
+      for (int ii=1; ii<nvl[0]+1; ii++) {
+        int i = find_id(ii,jj,kk);
+        if (type[i] == EMP_type) continue;
 
         // time integration (Euler's scheme)
         for (int ag_id=0; ag_id<num_agents; ag_id++)

@@ -337,7 +337,7 @@ void Comm::forward_comm(Brain *brn) {
 
   ctag = 0;
 
-  /// X direction
+  /// XLO direction
   if (comm_side[XHI] >= 0)
     MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_recv);
 
@@ -354,7 +354,7 @@ void Comm::forward_comm(Brain *brn) {
   if (comm_side[XLO] >= 0)
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
-  /// Y direction
+  /// YLO direction
   if (comm_side[YHI] >= 0)
     MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_recv);
 
@@ -372,7 +372,7 @@ void Comm::forward_comm(Brain *brn) {
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
 
-  /// Z direction
+  /// ZLO direction
   if (comm_side[ZHI] >= 0)
     MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_recv);
 
@@ -387,6 +387,61 @@ void Comm::forward_comm(Brain *brn) {
   }
 
   if (comm_side[ZLO] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+  /// newton_flux no: useful for GPU parallelization
+  if (brn->newton_flux) return;
+
+  /// XHI direction
+  if (comm_side[XLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_recv);
+
+  if (comm_side[XHI] >= 0) {
+    forward_pack(brn,XHI);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[XLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,XLO);
+  }
+
+  if (comm_side[XHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+  /// YHI direction
+  if (comm_side[YLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_recv);
+
+  if (comm_side[YHI] >= 0) {
+    forward_pack(brn,YHI);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[YLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,YLO);
+  }
+
+  if (comm_side[YHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+
+  /// ZHI direction
+  if (comm_side[ZLO] >= 0)
+    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_recv);
+
+  if (comm_side[ZHI] >= 0) {
+    forward_pack(brn,ZHI);
+    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[ZLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,ZLO);
+  }
+
+  if (comm_side[ZHI] >= 0)
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
 }

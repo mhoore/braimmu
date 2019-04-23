@@ -38,12 +38,6 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
     printf("Integration started. \n");
   integrate(Nrun);
 
-  //printf("proc %i: xlo = %g \n", me, xlo);
-  //MPI_Barrier(MPI_COMM_WORLD);
-  //printf("proc %i here3 \n",brn->me);
-  //if (brn->me == 2)
-    //printf("proc %i: unpack itag = %li, c=%i \n",brn->me,itag,c-1);
-
 }
 
 /* ----------------------------------------------------------------------*/
@@ -99,6 +93,8 @@ void Brain::allocations() {
   region = new Region();
 
   nim = NULL;
+
+  newton_flux = 1;
 }
 
 /* ----------------------------------------------------------------------*/

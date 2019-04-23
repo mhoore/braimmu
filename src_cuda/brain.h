@@ -80,6 +80,8 @@ class Brain {
   /// MRI image variables
   nifti_image *nim;
 
+  bool newton_flux;
+
   /// model parameters
   std::array<std::vector<double>, num_agents> agent, deriv;
   double init_val[num_agents];
