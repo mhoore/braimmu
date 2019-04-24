@@ -107,8 +107,8 @@ void Comm::balance(Brain *brn) {
 
   int nall = brn->nall;
 
-  int *type = brn->type;
-  bool *is_loc = brn->is_loc;
+  auto &type = brn->type;
+  auto &is_loc = brn->is_loc;
 
   nloop_loc = 0;
   for (int i=0; i<nall; i++) {
@@ -235,10 +235,10 @@ void Comm::balance(Brain *brn) {
 
   // set the new xlo and xhi
   int j,k,dumi;
-  i = static_cast<int>(me / (npart[1]*npart[2]));
-  dumi = me % (npart[1]*npart[2]);
-  j = static_cast<int>(dumi / npart[2]);
-  k = dumi % npart[2];
+  k = static_cast<int>(me / (npart[0]*npart[1]));
+  dumi = me % (npart[0]*npart[1]);
+  j = static_cast<int>(dumi / npart[0]);
+  i = dumi % npart[0];
 
   if (b_flag == 0)
     sid = i;
