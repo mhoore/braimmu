@@ -81,6 +81,10 @@ void Brain::allocations() {
   ds = df = 0.0;
   es = 0.0;
 
+  C_cir = 1.0;
+  c_cir = 0.0;
+  tau_cir = 1.0;
+
   memory->create(nv,3,"nv");
   memory->create(nvl,3,"nvl");
   memory->create(npart,3,"npart");

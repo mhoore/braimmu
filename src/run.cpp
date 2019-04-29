@@ -177,6 +177,11 @@ void Run::update(Brain *brn) {
         dum = agent[fAb][i] * agent[mic][i];
         deriv[ast][i] = brn->ka * (dum / (dum + brn->Ha) - agent[ast][i]);
 
+        // circadian rhythm
+        if (brn->c_cir > 0)
+          deriv[cir][i] = - brn->C_cir * brn->c_cir * brn->omega_cir
+                            * sin(brn->omega_cir * dt * brn->step);
+
         // time integration (Euler's scheme)
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           agent[ag_id][i] += deriv[ag_id][i] * dt;

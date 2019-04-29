@@ -304,6 +304,12 @@ int Input::read_parameters(Brain *brn) {
     else if (!(*arg)[c].compare("dnf")) brn->dnf = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("Ha")) brn->Ha = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("ka")) brn->ka = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("C_cir")) {
+      brn->C_cir = stof((*arg)[c+1]);
+      brn->init_val[cir] = brn->C_cir;
+    }
+    else if (!(*arg)[c].compare("c_cir")) brn->c_cir = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("tau_cir")) brn->tau_cir = stof((*arg)[c+1]);
     else if (find_agent((*arg)[c]) >= 0) brn->init_val[find_agent((*arg)[c])] = stof((*arg)[c+1]);
     else return 0;
 

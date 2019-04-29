@@ -11,6 +11,8 @@
 using namespace std;
 using namespace brain_NS;
 
+#define PI 3.141592653589793
+
 /* ---------------------------------------------------------------------- */
 Init::Init() {
 }
@@ -448,6 +450,8 @@ void Init::set_parameters(Brain *brn) {
   brn->D_mic = brn->diff_mic * brn->vlen_2;
   brn->cs = brn->sens_s * brn->vlen_2;
   brn->cf = brn->sens_f * brn->vlen_2;
+  brn->omega_cir = 2.0 * PI / brn->tau_cir;
+
 }
 
 /* ----------------------------------------------------------------------

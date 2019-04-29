@@ -93,6 +93,7 @@ class Brain {
   double dnf; // neuronal death rate due to fibrillization
   double Ha; // Michaelis-Menten constant for astrogliosis
   double ka; // rate of astrogliosis
+  double C_cir, c_cir, tau_cir, omega_cir; // circadian rhythm parameters
 
   MPI_Comm world;
 
