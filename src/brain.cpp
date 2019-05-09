@@ -26,7 +26,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
   // output initial step
   if (!me)
     printf("Writing output for the initial step ... \n");
-//  output->lammpstrj(this);
+  output->lammpstrj(this);
 
   if (output->do_dump)
     output->dump(this);
@@ -36,7 +36,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
 
   if (!me)
     printf("Integration started. \n");
-  run->integrate(this, Nrun);
+  integrate(Nrun);
 
   //printf("proc %i: xlo = %g \n", me, xlo);
   //MPI_Barrier(MPI_COMM_WORLD);
@@ -53,7 +53,6 @@ Brain::~Brain() {
   delete region;
   delete output;
   delete comm;
-  delete run;
   delete init;
   delete input;
   delete memory;
@@ -99,7 +98,6 @@ void Brain::allocations() {
   memory = new Memory();
   input = new Input();
   init = new Init();
-  run = new Run();
   comm = new Comm();
   output = new Output();
   region = new Region();

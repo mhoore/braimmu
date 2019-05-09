@@ -11,7 +11,7 @@ all: $(EXE)
 $(EXE): $(OBJ)
 	$(CC) $(CCFLAGS) $(LDFLAGS) -o $@ $^
 
-%.o: %.cpp pointers.h memory.h brain.h input.h init.h comm.h run.h output.h region.h nifti1.h nifti1_io.h znzlib.h
+%.o: %.cpp pointers.h memory.h brain.h input.h init.h comm.h output.h region.h nifti1.h nifti1_io.h znzlib.h
 	$(CC) $(CCFLAGS) -c $<
 
 clean:

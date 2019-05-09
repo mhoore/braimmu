@@ -46,11 +46,12 @@ void Output::lammpstrj(Brain *brn) {
 
   tagint *tag = brn->tag;
   int *type = brn->type;
+  int *group = brn->group;
 
   double **x = brn->x;
   double **agent = brn->agent;
 
-  int dsize = num_agents + 5; // NOTE: the number of data packed to the buffer
+  int dsize = num_agents + 6; // NOTE: the number of data packed to the buffer
   create(send_buf,nlocal*dsize,"send_buf");
 
   // pack
@@ -58,9 +59,10 @@ void Output::lammpstrj(Brain *brn) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
         send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(group[i]).d;
 
         send_buf[c++] = x[i][0];
         send_buf[c++] = x[i][1];
@@ -112,7 +114,9 @@ void Output::lammpstrj(Brain *brn) {
     tagint c = 0;
     for (int i=0; i<nvoxel; i++) {
       fprintf(fw,TAGINT_FORMAT " ", (tagint) ubuf(recv_buf[c++]).i); // tag
-      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+      c++;
+      //fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
       fprintf(fw,"%g ", recv_buf[c++]); // x
       fprintf(fw,"%g ", recv_buf[c++]); // y
       fprintf(fw,"%g ", recv_buf[c++]); // z
@@ -150,12 +154,13 @@ void Output::restart(Brain *brn) {
 
   tagint *tag = brn->tag;
   int *type = brn->type;
+  int *group = brn->group;
 
   int *nvl = brn->nvl;
 
   double **agent = brn->agent;
 
-  int dsize = num_agents + 2;
+  int dsize = num_agents + 3;
   create(send_buf,nlocal*dsize,"send_buf");
 
   // pack
@@ -163,9 +168,10 @@ void Output::restart(Brain *brn) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
         send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(group[i]).d;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           send_buf[c++] = agent[ag_id][i];
@@ -220,6 +226,9 @@ void Output::restart(Brain *brn) {
       fb.write((char *)&buft,sizeof(buft));
 
       bufi = (int) ubuf(recv_buf[c++]).i; // type
+      fb.write((char *)&bufi,sizeof(bufi));
+
+      bufi = (int) ubuf(recv_buf[c++]).i; // group
       fb.write((char *)&bufi,sizeof(bufi));
 
       for (int ag_id=0; ag_id<num_agents; ag_id++) {
@@ -290,7 +299,7 @@ void Output::statistics(Brain *brn) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
 
         int c;
         if (type[i] == WM_type || type[i] == GM_type)
@@ -395,7 +404,7 @@ void Output::statistics_sphere(Brain *brn) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
         int c = (tagint) (vlen_1 * sqrt(x[i][0] * x[i][0]
                                       + x[i][1] * x[i][1]
                                       + x[i][2] * x[i][2]));
@@ -502,6 +511,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
 
   double **x = brn->x;
   int *type = brn->type;
+  int *group = brn->group;
 
   int *nvl = brn->nvl;
 
@@ -511,6 +521,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   tagint c = 3;
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
+      dsize++;
+    else if (!arg[c].compare("group"))
       dsize++;
     else if (brn->input->find_agent(arg[c]) >= 0)
       dsize++;
@@ -528,7 +540,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = x[i][0]; // x
         send_buf[c++] = x[i][1]; // y
         send_buf[c++] = x[i][2]; // z
@@ -538,6 +550,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
           int ag_id = brn->input->find_agent(arg[aid]);
           if (!arg[aid].compare("type"))
             send_buf[c++] = ubuf(type[i]).d;
+          else if (!arg[aid].compare("group"))
+            send_buf[c++] = ubuf(group[i]).d;
           else if (ag_id >= 0)
             send_buf[c++] = agent[ag_id][i];
           aid++;
@@ -591,6 +605,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
       int ag_id = brn->input->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
         fprintf(fw,"type ");
+      else if (!arg[aid].compare("group"))
+        fprintf(fw,"group ");
       else if (ag_id >= 0)
         fprintf(fw,"%s ", ag_str[ag_id].c_str());
       aid++;
@@ -608,6 +624,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
         int ag_id = brn->input->find_agent(arg[aid]);
         if (!arg[aid].compare("type"))
           fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+        else if (!arg[aid].compare("group"))
+          fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
         else if (ag_id >= 0)
           fprintf(fw,"%g ", recv_buf[c++]); // agent
         aid++;
@@ -642,6 +660,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
   double **x = brn->x;
   int *type = brn->type;
+  int *group = brn->group;
 
   int *nvl = brn->nvl;
 
@@ -651,6 +670,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   tagint c = 3;
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
+      dsize++;
+    else if (!arg[c].compare("group"))
       dsize++;
     else if (!arg[c].compare("me"))
       dsize++;
@@ -670,7 +691,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = x[i][0]; // x
         send_buf[c++] = x[i][1]; // y
         send_buf[c++] = x[i][2]; // z
@@ -680,6 +701,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
           int ag_id = brn->input->find_agent(arg[aid]);
           if (!arg[aid].compare("type"))
             send_buf[c++] = ubuf(type[i]).d;
+          else if (!arg[aid].compare("group"))
+            send_buf[c++] = ubuf(group[i]).d;
           else if (!arg[aid].compare("me"))
             send_buf[c++] = ubuf(me).d;
           else if (ag_id >= 0)
@@ -743,6 +766,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
           //     brn->me, i, cnim);
 
         if (!arg[aid].compare("type"))
+          data[cnim] = (float) ubuf(recv_buf[c++]).i;
+        else if (!arg[aid].compare("group"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (!arg[aid].compare("me"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;

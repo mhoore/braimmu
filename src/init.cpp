@@ -97,8 +97,9 @@ void Init::read_mri(Brain *brn) {
 
     else if (mri_arg[i][0].compare("wm") &&
              mri_arg[i][0].compare("gm") &&
-             mri_arg[i][0].compare("csf")) {
-      printf("Error: read_mri unknown keyword. keywords: wm, gm, csf, all, restart. \n");
+             mri_arg[i][0].compare("csf") &&
+             mri_arg[i][0].compare("group")) {
+      printf("Error: read_mri unknown keyword. keywords: wm, gm, csf, group, all, restart. \n");
       exit(1);
     }
 
@@ -290,7 +291,7 @@ void Init::voxels(Brain *brn, int allocated) {
   for (int kk=0; kk<brn->nvl[2]+2; kk++)
     for (int jj=0; jj<brn->nvl[1]+2; jj++)
       for (int ii=0; ii<brn->nvl[0]+2; ii++) {
-        int i = brn->run->find_id(brn,ii,jj,kk);
+        int i = brn->find_id(ii,jj,kk);
 
         int j0 = static_cast<int>( round((x[i][1] - boxlo[1]) * brn->vlen_1 - 0.5) );
         int i0 = static_cast<int>( round((x[i][0] - boxlo[0]) * brn->vlen_1 - 0.5) );
@@ -508,6 +509,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   int nall = brn->nall;
 
   int *type = brn->type;
+  int *group = brn->group;
   double **agent = brn->agent;
 
   double vlen_1 = brn->vlen_1;
@@ -520,9 +522,11 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   else if (nim->xyz_units == NIFTI_UNITS_MICRON)
     conver_fac = 1.0;
 
-  // set all voxel types as EMP_type
-  for (int i=0; i<nall; i++)
+  // set all voxel types and groups as EMP_type
+  for (int i=0; i<nall; i++) {
     type[i] = EMP_type;
+    group[i] = 0;
+  }
 
   /* -------------------------------------------------------
    * set from restart
@@ -622,6 +626,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
         if (!arg[j].compare("type"))
           type[i] = static_cast<int>( round(v_prop[i][j]) );
+        else if (!arg[j].compare("group"))
+          group[i] = static_cast<int>( round(v_prop[i][j]) );
         else if (brn->input->find_agent(arg[j]) >= 0)
           agent[brn->input->find_agent(arg[j])][i] = v_prop[i][j];
         else {
@@ -710,7 +716,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
             // if it is in the partition
             if (vid != -1) {
               if (nim_tmp->datatype == DT_UINT8)
-                v_prop[vid] += static_cast<double>(ptr8[c]) * uint8coef;
+                v_prop[vid] += static_cast<double>(ptr8[c]);
               else if (nim_tmp->datatype == DT_INT16)
                 v_prop[vid] += ( static_cast<double>(ptr16[c] - INT16_MIN) ) * int16coef;
               else if (nim_tmp->datatype == DT_INT32)
@@ -738,14 +744,16 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           v_prop[i] /= n_prop[i];
 
         double coef = 1.0 / (1.0 - thres_val);
-        // criteria based on mri file
+        /* ----------------------------------------------------------------------
+         * criteria based on mri file
+         * setup all types and groups from a single file
+         * ----------------------------------------------------------------------*/
         if (!mri_arg[tis][0].compare("all")) {
           if (v_prop[i] <= 0) {
             type[i] = EMP_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
-
           else if (v_prop[i] < thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -757,27 +765,43 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
             agent[neu][i] = (v_prop[i] - thres_val) * coef * max_val;
           }
         }
-
+        /* ----------------------------------------------------------------------
+         * setup WM type from wm file
+         * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("wm")) {
           if (v_prop[i] > thres_val) {
             type[i] = WM_type;
             agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
-
+        /* ----------------------------------------------------------------------
+         * setup GM type from gm file
+         * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("gm")) {
           if (v_prop[i] > thres_val) {
             type[i] = GM_type;
             agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
-
+        /* ----------------------------------------------------------------------
+         * setup CSF type from csf file
+         * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("csf")) {
           if (v_prop[i] > thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
+        }
+        /* ----------------------------------------------------------------------
+         * setup groups from group file
+         * ----------------------------------------------------------------------*/
+        else if (!mri_arg[tis][0].compare("group")) {
+          double fractpart, intpart;
+          fractpart = modf (v_prop[i], &intpart);
+          //printf("HERE0: %i %g \n",i,v_prop[i]);
+          if (fractpart != 0) continue;
+          group[i] = static_cast<int>( v_prop[i] );
         }
 
       }

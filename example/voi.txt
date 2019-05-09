@@ -1,0 +1,50 @@
+# Volume of interest file description
+# label_id, abbreviation, description
+
+30  , FLW , frontal left WM
+210 , FLG , frontal left GM
+17  , FRW , frontal right WM
+211 , FRG , frontal right GM
+
+83  , TLW , temporal left WM
+218 , TLG , temporal left GM
+59  , TRW , temporal right WM
+219 , TRG , temporal right GM
+
+57  , PLW , parietal left WM
+6   , PLG , parietal left GM
+105 , PRW , parietal right WM
+2   , PRG , parietal right GM
+
+73  , OLW , occipital left WM
+8   , OLG , occipital left GM
+45  , ORW , occipital right WM
+4   , ORG , occipital right GM
+
+67  , CeL , cerebellum left
+76  , CeR , cerebellum right
+20  , BrS , brain stem
+
+3   , LVL , lateral ventricle left
+9   , LVR , lateral ventricle right
+232 , Ve3 , 3rd ventricle
+233 , Ve4 , 4th ventricle
+255 , eCSF , extracerebral CSF
+
+39  , CaL , caudate left
+53  , CaR , caudate right
+
+14  , PuL , putamen left
+16  , PuR , putamen right
+
+102 , ThL , thalamus left
+203 , ThR , thalamus right
+
+33  , sTNL , subthalamic nucleus left
+23  , sTNR , subthalamic nucleus right
+
+12  , GPL , globus pallidus left
+11  , GPR , globus pallidus right
+
+29  , FoL , fornix left
+254 , FoR , fornix right

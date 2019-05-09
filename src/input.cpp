@@ -167,7 +167,7 @@ void Input::execute_command(Brain *brn) {
    * syntax: read_mri keyword file.nii thres_val max_val
    * example: read_mri gm gm.nii 0.1 1.0e9
    * arguments:
-   * keywords: gm, wm, csf, restart, all
+   * keywords: gm, wm, csf, group, restart, all
    * thres_val: threshold value between 0 and 1
    * max_val: maximum number of neurons */
   else if (!command.compare("read_mri")) {

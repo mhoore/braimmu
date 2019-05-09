@@ -18,7 +18,6 @@
 #include "input.h"
 #include "memory.h"
 #include "init.h"
-#include "run.h"
 #include "comm.h"
 #include "output.h"
 #include "region.h"
@@ -33,11 +32,16 @@ class Brain {
   void allocations();
   void destroy();
 
+  // run functions
+  void integrate(int);
+  void update();
+  void derivatives();
+  int find_id(int, int, int);
+
   // classes
   Input *input;
   Memory *memory;
   Init *init;
-  Run *run;
   Comm *comm;
   Output *output;
   Region *region;

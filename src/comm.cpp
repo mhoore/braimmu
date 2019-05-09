@@ -403,7 +403,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int i = 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -415,7 +415,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int i = nvl[0];
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -427,7 +427,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int j = 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -439,7 +439,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int j = nvl[1];
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -451,7 +451,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int k = 1;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -463,7 +463,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
     int k = nvl[2];
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -485,7 +485,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int i = 0;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -497,7 +497,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int i = nvl[0] + 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -509,7 +509,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int j = 0;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -521,7 +521,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int j = nvl[1] + 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -533,7 +533,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int k = 0;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -545,7 +545,7 @@ void Comm::forward_unpack(Brain *brn, int flag) {
     int k = nvl[2] + 1;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -631,7 +631,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int i = 0;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -643,7 +643,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int i = nvl[0] + 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -655,7 +655,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int j = 0;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -667,7 +667,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int j = nvl[1] + 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -679,7 +679,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int k = 0;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -691,7 +691,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
     int k = nvl[2] + 1;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -713,7 +713,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int i = 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -725,7 +725,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int i = nvl[0];
     for (int k=1; k<nvl[2]+1; k++)
       for (int j=1; j<nvl[1]+1; j++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -737,7 +737,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int j = 1;
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -749,7 +749,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int j = nvl[1];
     for (int k=1; k<nvl[2]+1; k++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -761,7 +761,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int k = 1;
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -773,7 +773,7 @@ void Comm::reverse_unpack(Brain *brn, int flag) {
     int k = nvl[2];
     for (int j=1; j<nvl[1]+1; j++)
       for (int i=1; i<nvl[0]+1; i++) {
-        int vid = brn->run->find_id(brn,i,j,k);
+        int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
         for (int ag_id=0; ag_id<num_agents; ag_id++)
