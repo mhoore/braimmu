@@ -689,15 +689,25 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         n_prop[i] = 0;
       }
 
+      // mapping correction
+      int offset3 = static_cast<int>( round(0.5 * (nim->dim[3] - nim_tmp->dim[3])) );
+      int offset2 = static_cast<int>( round(0.5 * (nim->dim[2] - nim_tmp->dim[2])) );
+      int offset1 = static_cast<int>( round(0.5 * (nim->dim[1] - nim_tmp->dim[1])) );
+
+      printf("HERE %i %i %i \n",offset1,offset2,offset3);
+
       int c = 0;
       for (int k=0; k<nim_tmp->dim[3]; k++) {
         int kk = static_cast<int>( round(nim_tmp->pixdim[3] * k * conver_fac * vlen_1) );
+        kk += offset3;
 
         for (int j=0; j<nim_tmp->dim[2]; j++) {
           int jj = static_cast<int>( round(nim_tmp->pixdim[2] * j * conver_fac * vlen_1) );
+          jj += offset2;
 
           for (int i=0; i<nim_tmp->dim[1]; i++) {
             int ii = static_cast<int>( round(nim_tmp->pixdim[1] * i * conver_fac * vlen_1) );
+            ii += offset1;
 
             tagint itag = find_tag(brn,ii,jj,kk);
             if (itag == -1) {
@@ -708,7 +718,6 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
             int vid = map[itag];
 
-            double uint8coef = 1.0 / static_cast<double>(UINT8_MAX);
             double int16coef = 1.0 / (static_cast<double>(INT16_MAX)
                                       - static_cast<double>(INT16_MIN));
             double int32coef = 1.0 / (static_cast<double>(INT32_MAX)

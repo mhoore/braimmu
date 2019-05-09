@@ -36,6 +36,7 @@ parameters sAb 0.0 # uM
 parameters fAb 0.0 # uM
 parameters ast 0.0 # astrogliosis
 
+# Note: the voxels and boundaries are set based on the first mri input
 #read_mri restart restart.nii 0.0 1.0
 #read_mri all mni152_2009bet.nii 0.5 1.0e8
 #read_mri csf csf.nii 0.0 1.0
