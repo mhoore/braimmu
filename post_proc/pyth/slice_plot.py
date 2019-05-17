@@ -17,40 +17,44 @@ from matplotlib.colors import LogNorm
 import subprocess
 import os
 import nibabel as nib
-import math
 
-rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 26})
+rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 24})
 rc('text', usetex=True)
 rcParams.update({'figure.autolayout': True})
 
-command = "mkdir single"
+command = "mkdir slice_hists"
+p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
+
+command = "mkdir slice_contours"
 p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 
 # Data Input
 scale_fac = 1.e-3
 
-if len(sys.argv) < 7:
+if len(sys.argv) < 5:
     print(sys.argv)
     sys.exit("Error: chack the arguments")
 
 fr = sys.argv[1]
 dim = int(sys.argv[2])
-sec = int(sys.argv[3])
+sec_id = int(sys.argv[3])
 time = sys.argv[4]
-realtime = float(sys.argv[5])
-fr0 = sys.argv[6]
+realtime = sys.argv[5]
 
 AGENTS = ("mic","neu","sAb","fAb","ast","typ")
-ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_sgn = ('M', 'N', 'S','F','A','TYPE','atrophy')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$')
+ag_sgn = ('M', 'N', 'S','F','A','TYPE')
 
 x = []
-y = []
-Npoints = []
-
 agents = []
-agents0 = []
+Zscore = []
+Pearson = []
+
+xlo = []
+xhi = []
+
+xlim = np.zeros(2, dtype=np.float32)
+ylim = np.zeros(2, dtype=np.float32)
 
 Nx = np.zeros(4, dtype=np.int32)
 dx = np.zeros(3, dtype=np.float32)
@@ -93,200 +97,255 @@ def main():
     img = nib.load(fr)
     data = img.get_fdata()
     data_sec = []
-
-    img0 = nib.load(fr0)
-    data0 = img0.get_fdata()
-    data_sec0 = []
     
     Nx[0], Nx[1], Nx[2], dum, Nx[3] = data.shape
     dx[0], dx[1], dx[2], dt, dum = img.header.get_zooms()
     
     for i in range(3):
-        dx[i] *= scale_fac
-        lx[i] = Nx[i] * dx[i]
+        lx[i] = Nx[i] * dx[i] * scale_fac
     
     if (dim == 0):
-        data_sec.append( data[sec-1,:,:,0,:] )
-        data_sec0.append( data0[sec-1,:,:,0,:] )
-        Npoints.append( Nx[1] * Nx[2] )
-        x.append( np.zeros(Npoints[0], dtype=np.float32) )
-        y.append( np.zeros(Npoints[0], dtype=np.float32) )
-
-    if (dim == 1):
-        data_sec.append( data[:,sec-1,:,0,:] )
-        data_sec0.append( data0[:,sec-1,:,0,:] )
-        Npoints.append( Nx[0] * Nx[2] )
-        x.append( np.zeros(Npoints[0], dtype=np.float32) )
-        y.append( np.zeros(Npoints[0], dtype=np.float32) )
-    
-    if (dim == 2):
-        data_sec.append( data[:,:,sec-1,0,:] )
-        data_sec0.append( data0[:,:,sec-1,0,:] )
-        Npoints.append( Nx[0] * Nx[1] )
-        x.append( np.zeros(Npoints[0], dtype=np.float32) )
-        y.append( np.zeros(Npoints[0], dtype=np.float32) )
-
-    for j in range(Nx[3]):
-        agents.append( np.zeros(Npoints[0], dtype=np.float32) )
-        agents0.append( np.zeros(Npoints[0], dtype=np.float32) )
-    
-    ii = 0
-    jj = 0
-    if (dim == 0):
+        xlbl = r'$y ~{\rm (mm)}$'
+        ylbl = r'$z ~{\rm (mm)}$'
         ii = 1
         jj = 2
+        data_sec.append(data[sec_id-1,:,:,0,:])
+        
     elif (dim == 1):
+        xlbl = r'$x ~{\rm (mm)}$'
+        ylbl = r'$z ~{\rm (mm)}$'
         ii = 0
         jj = 2
+        data_sec.append(data[:,sec_id-1,:,0,:])
+
     elif (dim == 2):
+        xlbl = r'$x ~{\rm (mm)}$'
+        ylbl = r'$y ~{\rm (mm)}$'
         ii = 0
         jj = 1
+        data_sec.append(data[:,:,sec_id-1,0,:])
+
+    Npoints = Nx[ii] * Nx[jj]
+    
+    x.append(np.zeros(Npoints, dtype=np.float32))
+    x.append(np.zeros(Npoints, dtype=np.float32))
+
+    for i in range(Nx[3]):
+        agents.append(np.zeros(Npoints, dtype=np.float32))
     
     c = 0
     for i in range(Nx[ii]):
         dum = dx[ii] * i
         for j in range(Nx[jj]):
             x[0][c] = dum
-            y[0][c] = dx[jj] * j
+            x[1][c] = dx[jj] * j
             
             for ag_id in range(Nx[3]):
                 agents[ag_id][c] = data_sec[0][i,j,ag_id]
-                agents0[ag_id][c] = data_sec0[0][i,j,ag_id]
             
             c += 1
     
+    for i in range(2):
+        x[i] *= scale_fac
+        xlo.append(np.min(x[i]))
+        xhi.append(np.max(x[i]))
+        
+    xlim[0] = xlo[0]
+    xlim[1] = xhi[0]
+    
+    ylim[0] = xlo[1]
+    ylim[1] = xhi[1]
+    
+    data = []
+    data_sec = []
+    
+    prune_data()
+    
+    print(x[0].shape,x[1].shape,agents[0].shape)
+    for i in range(len(x[0])):
+        if (agents[1][i] <= 0.0):
+            print(agents[1][i], agents[-1][i])
+
+    for i in range(Nx[3]):
+        Zscore.append( ( agents[i] - np.mean(agents[i]) ) / np.std(agents[i]) )
+        #if (np.std(agents[i]) == 0):
+        #   Zscore[i] = 0.0
+        #  print(agents[i],Zscore[i])
+    
+
     for me in range(Nx[3]-1):
-        z = data[:,:,:,0,me].flatten()
-        SMALL = 1.e-6
-        z[z <= SMALL] = 0
-        Z = np.ma.masked_equal(z,0)
-        z = Z.compressed() # get normal array with masked values removed
+
+        labels = (xlbl,ylbl,ag_names[me])
+            
+        fw = "slice_hists/s_hist_" + AGENTS[me] + "_d" + str(dim) + "_s" + str(sec_id) + "_t" + time + ".png"
+        cut_min, cut_max = make_histogram(agents[me],labels,fw)
         
-        mu = np.mean(z)
-        sig = np.std(z)
+        fw = "slice_contours/s_cont_" + AGENTS[me] + "_d" + str(dim) + "_s" + str(sec_id) + "_t" + time + ".png"
+        #make_contour(x[0],x[1],agents[me],Nx[ii],Nx[jj],lx[ii],lx[jj],labels,cut_min,cut_max,fw)
+            
+        # Z-scores
+        lbl = r'$z_{%s}$' % ag_sgn[me]
+        labels = (xlbl,ylbl,lbl)
+
+        fw = "slice_contours/s_cont_Z_" + AGENTS[me] + "_d" + str(dim) + "_s" + str(sec_id) + "_t" + time + ".png"
         
-        print(me,ag_sgn[me],mu,sig)
+        cut_max = np.max(Zscore[me]) #max( abs(np.min(Zscore[me])),np.max(Zscore[me]) )
+        cut_min = np.min(Zscore[me]) #- cut_max
+        make_contour(x[0],x[1],Zscore[me],Nx[ii],Nx[jj],lx[ii],lx[jj],labels,cut_min, cut_max,fw)
+            
+        # Pearson's r correlation
+        for me2 in range(me+1,Nx[3]-1):
 
-        zs = (z-mu)/sig
-        if (math.isnan(sig)):
-            continue
-        
-        cut_min = np.min(zs)
-        cut_max = np.max(zs)
-        
-        Zscore = ( agents[me] - mu)/sig
-        
-        fw = "single/s_Z_" + AGENTS[me] + "_d" + str(dim) + "_s" + str(sec) + "_t" + time + ".png"
+            if (me != 1):
+                continue
+            if (me2 !=3  and me2 != 4):
+                continue
 
-        z   = data[:,:,:,0,me].flatten()
-        tis = data[:,:,:,0,-1].flatten()
+            Pearson = Zscore[me] * Zscore[me2] / (len(Zscore[me]))
+            
+            lbl = r'${\rm corr}(%s,%s)$' % (ag_sgn[me],ag_sgn[me2])
+            labels = (xlbl,ylbl,lbl)
+            
+            fw = "slice_contours/s_cont_corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_d" + str(dim) + "_s" + str(sec_id) + "_t" + time + ".png"
+            
+            cut_max = np.max(Pearson) # max( abs(np.min(Pearson)),np.max(Pearson) )
+            cut_min = np.min(Pearson) # - cut_max
 
-        make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
+            make_contour(x[0],x[1],Pearson,Nx[ii],Nx[jj],lx[ii],lx[jj],labels,cut_min, cut_max,fw)
 
-    # tissue
-    me = Nx[3]-1
-    z = data[:,:,:,0,me].flatten()
-    Zscore = agents[me]
-    fw = "single/s_type_d" + str(dim) + "_s" + str(sec) + "_t" + time + ".png"
-    make_plot(Zscore,z,tis,me,-1,3,fw,4)
+def prune_data():
+    # find useless data
+    marray = np.ma.masked_where(agents[-1] <= 0,agents[-1]).mask
+    
+    x[0] = np.ma.array(x[0], mask = marray).compressed()
+    x[1] = np.ma.array(x[1], mask = marray).compressed()
+    
+    for i in range(Nx[3]):
+        agents[i] = np.ma.array(agents[i], mask = marray).compressed()
 
-    # attrophy (1-N)
-    me = 1
-    atrophy = - agents[me] / agents0[me] + 1.0
-
-    z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
+def make_histogram(z,labels,fw):
+    # find useless data
     SMALL = 1.e-6
     z[z <= SMALL] = 0
     Z = np.ma.masked_equal(z,0)
     z = Z.compressed() # get normal array with masked values removed
     
-    cut_min = 0.0
-    cut_max = 1.0
+    cut_min = np.min(z)
+    cut_max = np.max(z)
     
-    fw = "single/s_atrophy_d" + str(dim) + "_s" + str(sec) + "_t" + time + ".png"
-
-    z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
-    tis = data[:,:,:,0,-1].flatten()
-
-    make_plot(atrophy,z,tis,Nx[3],cut_min,cut_max,fw,100)
+    #print(ag_names[me],np.min(z),np.max(z))
     
-    data = []
-    data_sec = []
-    data0 = []
-    data_sec0 = []
-
-## plots
-def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
-    fig = pl.figure(figsize=(9,9))
-    #ax = fig.add_subplot(111)
-    ax = fig.add_axes([0.02,0.02,0.9,0.9])
+    fig = pl.figure(figsize=(7,5))
+    ax = fig.add_subplot(111)
+    ax.hist(z, histtype='stepfilled',bins=50,density=True, fc='#CCCCCC', alpha=0.5, edgecolor='black', linewidth=1.2)  # bins='auto'
+    ax.set_xlabel(labels[2])
+    ax.set_ylabel(r'$\rm probability$')
     
+    #ax.set_xlim(cut_min,cut_max)
+    #ax.set_xticklabels([r'%.2e' % cut_min, r'%.2e' % cut_max])
+    
+    pl.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
+    pl.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+
+    pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
+    pl.close()
+    
+    return cut_min, cut_max
+    
+## contour plots
+def make_contour(x,y,z,Nx,Ny,lx,ly,labels,cut_min,cut_max,fw):
+    contour_levels = 100
+    # Plot properties
+    if (dim == 0):
+        figsizex = 10.0
+        figsizey =  8.0
+    elif (dim == 1):
+        figsizex = 10.0
+        figsizey =  9.5
+    elif (dim == 2):
+        figsizex = 10.0
+        figsizey = 11.0
+    
+    ar = figsizex / figsizey
+    n_X = 1
+    n_Y = 1
+    ax_len_x = 0.78/n_X             # Length of one subplot square box
+    ax_len_y = ax_len_x*ly/lx * ar  # Length of one subplot square box
+    ax_bx = 0.10                    # Beginning/offset of the subplot in the box
+    ax_by = 0.09 * ar               # Beginning/offset of the subplot in the box
+    ax_sepx = 0.01                  # Separation length between two subplots
+    ax_sepy = 0.02 * ar             # Separation length between two subplots
+    total_subplots_in_x = n_X       # Total number of subplots in x direction
+
+    ax = []
+    fig = pl.figure(figsize=(figsizex,figsizey))
+    subp = Subplots(fig, ax_len_x, ax_len_y, ax_sepx, ax_sepy, ax_bx, ax_by, total_subplots_in_x)
+    subcnt = 0
+
     mlx   = MultipleLocator(10)
     mly   = MultipleLocator(10)
 
-    lbl = r'$z_{%s}$' % ag_sgn[me]
-    if (me == Nx[3]-1):
-        lbl = r'$\rm Tissue$'
-    elif (me == Nx[3]):
-        lbl = r'$\rm Atrophy$'
-
-    xls = []
-    yls = []
-    if (dim == 0):
-        xls = np.linspace(0,lx[1],Nx[1])
-        yls = np.linspace(0,lx[2],Nx[2])
-    elif (dim == 1):
-        xls = np.linspace(0,lx[0],Nx[0])
-        yls = np.linspace(0,lx[2],Nx[2])
-    elif (dim == 2):
-        xls = np.linspace(0,lx[0],Nx[0])
-        yls = np.linspace(0,lx[1],Nx[1])
-    
+    xls = np.linspace(np.min(x),np.max(x),Nx)
+    yls = np.linspace(np.min(y),np.max(y),Ny)
     x_gr, y_gr = np.meshgrid(xls, yls)
-        
-    z_gr = griddata((x[0],y[0]), Zscore, (x_gr, y_gr), method='nearest')
     
-    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
-                            levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
-    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
-    
-    cs.cmap.set_under('None')
-    cs.cmap.set_over('k')
+    for i_y in range(n_Y) :
+        for i_x in range(n_X) :
+            ax.append( subp.addSubplot() )
+            
+            # grid the data.
+            z_gr = griddata((x,y), z, (x_gr, y_gr), method='cubic')
 
-    # scale bar
-    from matplotlib.patches import Rectangle
-    #cax = pl.gca()
-    ax.add_patch(Rectangle((0, 0), 100, 2, alpha=1, color='k'))
-    #fig.text(0.1,0.1,r'$\rm 100 ~mm$')
+            #cs = ax[subcnt].contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
+             #                        levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
+            cs = ax[subcnt].pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
+            
+            cs.cmap.set_under('None')
+            cs.cmap.set_over('k')
 
-    # ax.plot(x, y, 'ko', markersize=4)
+            # ax[subcnt].plot(x, y, 'ko', markersize=4)
 
-    if (dim == 0):
-        ax.set_xlim(0,lx[1] )
-        ax.set_ylim(0,lx[2] )
-    elif (dim == 1):
-        ax.set_xlim(0,lx[0] )
-        ax.set_ylim(0,lx[2] )
-    elif (dim == 2):
-        ax.set_xlim(0,lx[0] )
-        ax.set_ylim(0,lx[1] )
+            ax[subcnt].set_xlim(xlim[0],xlim[1])
+            ax[subcnt].set_ylim(ylim[0],ylim[1])
 
-    ax.xaxis.set_minor_locator(mlx)
-    ax.yaxis.set_minor_locator(mly)
+            ax[subcnt].tick_params(axis='x',which='minor',bottom='on')
+            ax[subcnt].tick_params(axis='y',which='minor',bottom='on')
 
-    tit = r'%s ,  $\rm t = %g ~(day)$' % (ag_tit[me],realtime)
-    ax.set_xticks([])
-    ax.set_yticks([])
+            ax[subcnt].xaxis.set_minor_locator(mlx)
+            ax[subcnt].yaxis.set_minor_locator(mly)
 
-    fig.text(0.50,0.96,tit,fontsize=30, ha='center', va='center')
-    
-    cbar_ax = fig.add_axes([0.93,0.15,0.02,0.7])
-    cbar = pl.colorbar(cs,cax=cbar_ax)
-    cbar.set_ticks([cut_min,cut_max])
-    cbar.ax.set_yticklabels([r'$\rm %.1f$' % cut_min, r'$\rm %.1f$' % cut_max],rotation=90,fontsize=30)
-    fig.text(0.96,0.5,lbl, rotation='vertical', fontsize=30)
-    
-    ax.set_aspect('equal')
+            tit = r'$\rm time = %s ~(day)$' % realtime
+            #ax[subcnt].set_xticks([pi/2,pi,3.0*pi/2,2.0*pi])
+            #ax[subcnt].set_yticks([pi/2,pi])
+
+            #if (i_y == 1):
+            ax[subcnt].set_title(tit)
+            #ax[subcnt].set_xticklabels([])
+            #if (i_y == 0):
+            #ax[subcnt].set_xlabel(r'$\left( \phi - \pi \right) \sin{\theta} + \pi$')
+            #ax[subcnt].set_xticklabels([r'$\rm \pi/2$',r'$\rm \pi$',r'$\rm 3\pi/2$',r'$\rm 2 \pi$'])
+
+            ax[subcnt].set_xlabel(labels[0])
+            ax[subcnt].set_ylabel(labels[1])
+            
+            #ax[subcnt].set_yticklabels([r'$\rm \pi/2$',r'$\rm \pi$'])
+            #else:
+            #pl.setp(ax[subcnt].get_yticklabels(), visible=False)
+            #ax[subcnt].set_yticklabels([])
+
+            #if (i_x == n_X - 1 and i_y == 0) :
+            cbar_ax = fig.add_axes([n_X*ax_len_x + (n_X-1.0)*ax_sepx + ax_bx + 0.01, 
+                                    ax_by + i_y*ax_sepy + (0.1 + i_y)*ax_len_y, 0.03, 0.8*ax_len_y])
+            cbar = pl.colorbar(cs,cax=cbar_ax)
+            cbar.set_ticks([cut_min,cut_max])
+            #mticks = cbar.norm([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10,20])
+            #cbar.ax.yaxis.set_ticks(mticks, minor=True)
+            #cbar.set_ticklabels([0, r'%.2e' % np.max(z)])
+            cbar.ax.set_yticklabels([r'%.2e' % cut_min, r'%.2e' % cut_max],rotation=90)
+            fig.text(n_X*ax_len_x + (n_X-1.0)*ax_sepx + ax_bx + 0.06, 
+                     ax_by + i_y*ax_sepy + (0.5 + i_y)*ax_len_y, labels[2], rotation='vertical')
+
+            subcnt += 1
 
     pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
     pl.close()

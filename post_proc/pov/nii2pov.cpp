@@ -158,10 +158,11 @@ void N2P::settings () {
   //camera position and lighting
   fprintf(fw, "//camera and lights \n");
   fprintf(fw, "camera{ orthographic angle  %g \n", CAM_ANGLE);
-  fprintf(fw, "  location <%g, %g, %g> \n",
-          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0],
-          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0],
-          0.5 * lbox[0] + cam[0] * 1.0 * lbox[0]);
+  fprintf(fw, "  location <350000, 200000, 300000> \n");
+//  fprintf(fw, "  location <%g, %g, %g> \n",
+//          0.5 * lbox[0] + cam[0] * 2.0 * lbox[0],
+//          0.5 * lbox[1] + cam[1] * 2.0 * lbox[1],
+//          0.5 * lbox[2] + cam[2] * 2.0 * lbox[2]);
 
   fprintf(fw, "  look_at  <%g, %g, %g> \n",
           look[0],
@@ -266,15 +267,20 @@ void N2P::file_write () {
       for (j=0; j<nim->dim[2]; j++) {
         for (i=0; i<nim->dim[1]; i++) {
 
-          //if (i != sec_id || data[c][dsize-1] == 0) {
-          if (data[c][dsize-1] < 0) {
+          //if (i != sec_id || data[c][dsize-1] <= 0) {
+          if (data[c][dsize-1] <= 0) {
             c++;
             continue;
           }
 
-          if ((x[c][0] - 0.45 * lbox[0]) >= 0 &&
-              (x[c][1] - 0.45 * lbox[1]) >= 0 &&
-              (x[c][2] - 0.45 * lbox[2]) >= 0 ) {
+          if ((x[c][0] - 0.4 * lbox[0]) >= 0 &&
+              (x[c][1] - 0.4 * lbox[1]) >= 0 &&
+              (x[c][2] - 0.4 * lbox[2]) >= 0 ) {
+            c++;
+            continue;
+          }
+
+          if ((x[c][2] - 0.65 * lbox[2]) >= 0 ) {
             c++;
             continue;
           }
@@ -291,29 +297,54 @@ void N2P::file_write () {
           grayscale = (data[c][me] - minval) * coef - 1.0;
           jet(grayscale, rgb);
 
-/*          if (data[c][me] == 0) {
-            rgb[0] = 0.0;
-            rgb[1] = 0.0;
-            rgb[2] = 0.4;
+/*
+          if (data[c][me] == 30 || data[c][me] == 17) {
+            rgb[0] = 0; rgb[1] = 0; rgb[2] = 0;
           }
-
-          else if (data[c][me] == 1) {
-            rgb[0] = 0.9;
-            rgb[1] = 0.9;
-            rgb[2] = 0.0;
+          else if (data[c][me] == 210 || data[c][me] == 211) {
+            rgb[0] = 0; rgb[1] = 0; rgb[2] = 255.0/256;
           }
-
-          else if (data[c][me] == 2) {
-            rgb[0] = 0.8;
-            rgb[1] = 0.1;
-            rgb[2] = 0.0;
+          else if (data[c][me] == 83 || data[c][me] == 59) {
+            rgb[0] = 255.0/256; rgb[1] = 0; rgb[2] = 0;
+          }
+          else if (data[c][me] == 218 || data[c][me] == 219) {
+            rgb[0] = 0; rgb[1] = 255.0/256; rgb[2] = 0;
+          }
+          else if (data[c][me] == 57 || data[c][me] == 105) {
+            rgb[0] = 0; rgb[1] = 255.0/256; rgb[2] = 255.0/256;
+          }
+          else if (data[c][me] == 6 || data[c][me] == 2) {
+            rgb[0] = 255.0/256; rgb[1] = 0; rgb[2] = 255.0/256;
+          }
+          else if (data[c][me] == 73 || data[c][me] == 45) {
+            rgb[0] = 128.0/256; rgb[1] = 128.0/256; rgb[2] = 0;
+          }
+          else if (data[c][me] == 8 || data[c][me] == 4) {
+            rgb[0] = 144.0/256; rgb[1] = 238.0/256; rgb[2] = 144.0/256;
+          }
+          else if (data[c][me] == 67 || data[c][me] == 76) {
+            rgb[0] = 178.0/256; rgb[1] = 34.0/256; rgb[2] = 34.0/256;
+          }
+          else if (data[c][me] == 39 || data[c][me] == 53) {
+            rgb[0] = 255.0/256; rgb[1] = 128.0/256; rgb[2] = 0;
+          }
+          else if (data[c][me] == 14 || data[c][me] == 16) {
+            rgb[0] = 70.0/256; rgb[1] = 130.0/256; rgb[2] = 180.0/256;
+          }
+          else if (data[c][me] == 102 || data[c][me] == 203) {
+            rgb[0] = 255.0/256; rgb[1] = 105.0/256; rgb[2] = 180.0/256;
+          }
+          else if (data[c][me] == 33 || data[c][me] == 23) {
+            rgb[0] = 112.0/256; rgb[1] = 128.0/256; rgb[2] = 144.0/256;
+          }
+          else if (data[c][me] == 12 || data[c][me] == 11) {
+            rgb[0] = 138.0/256; rgb[1] = 43.0/256; rgb[2] = 226.0/256;
+          }
+          else {
+            c++;
+            continue;
           }
 */
-          //if (data[c][-1] >= 0) {
-          //  printf("%g, %g, %g --> %g, c=%i, %g \n",
-          //        x[c][0], x[c][1], x[c][2], data[c][me],c, data[c][-1]);
-          //  getchar();
-          //}
           fprintf(fw, "box{<%g, %g, %g>, <%g, %g, %g> \
                   texture{pigment{color rgbft <%g, %g, %g, %g, %g>} } }\n",
                   x0, y0, z0, x1, y1, z1, rgb[0], rgb[1], rgb[2], TRANS, FILTER);

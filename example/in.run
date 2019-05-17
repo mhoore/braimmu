@@ -37,18 +37,17 @@ parameters fAb 0.0 # uM
 parameters ast 0.0 # astrogliosis
 
 # Note: the voxels and boundaries are set based on the first mri input
-#read_mri restart restart.nii 0.0 1.0
-#read_mri all mni152_2009bet.nii 0.5 1.0e8
-#read_mri csf csf.nii 0.0 1.0
-read_mri wm wm.nii 0.3 1.0e7
-read_mri gm gm.nii 0.25 1.0e8
-read_mri csf csf.nii 0.1 1.0
-read_mri group voi.nii 0 0
+read_mri wm ../base/wm.nii 0.3 1.0e7
+read_mri gm ../base/gm.nii 0.25 1.0e8
+read_mri csf ../base/csf.nii 0.1 1.0
+read_mri group ../base/voi.nii 0 0
 
 #balance y 20
 
 ## outputs
 dump mri 100 dump. mic neu sAb fAb ast type group
+dump mri 100 dump.type. type
+dump mri 100 dump.group. group
 statistics 100 stat.dat
 
 log 10

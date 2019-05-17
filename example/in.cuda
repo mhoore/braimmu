@@ -33,8 +33,6 @@ parameters fAb 0.0 # uM
 parameters cir 4.0e-11 # neuronal Abeta secretion (mol/day/neuron)
 parameters ast 0.0 # astrogliosis
 
-#read_mri restart restart.nii 0.0 1.0
-#read_mri all mni152_2009bet.nii 0.5 1.0e8
 read_mri wm wm.nii 0.3 1.0e7
 read_mri gm gm.nii 0.25 1.0e8
 read_mri csf csf.nii 0.2 1.0

@@ -626,8 +626,12 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
         if (!arg[j].compare("type"))
           type[i] = static_cast<int>( round(v_prop[i][j]) );
-        else if (!arg[j].compare("group"))
-          group[i] = static_cast<int>( round(v_prop[i][j]) );
+        else if (!arg[j].compare("group")) {
+          double fractpart, intpart;
+          fractpart = modf (v_prop[i][j], &intpart);
+          if (fractpart != 0) continue;
+          group[i] = static_cast<int>( v_prop[i][j] );
+        }
         else if (brn->input->find_agent(arg[j]) >= 0)
           agent[brn->input->find_agent(arg[j])][i] = v_prop[i][j];
         else {
@@ -693,8 +697,6 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
       int offset3 = static_cast<int>( round(0.5 * (nim->dim[3] - nim_tmp->dim[3])) );
       int offset2 = static_cast<int>( round(0.5 * (nim->dim[2] - nim_tmp->dim[2])) );
       int offset1 = static_cast<int>( round(0.5 * (nim->dim[1] - nim_tmp->dim[1])) );
-
-      printf("HERE %i %i %i \n",offset1,offset2,offset3);
 
       int c = 0;
       for (int k=0; k<nim_tmp->dim[3]; k++) {

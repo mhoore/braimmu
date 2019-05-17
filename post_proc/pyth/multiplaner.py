@@ -42,17 +42,31 @@ time = sys.argv[5]
 realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ")
-ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_sgn = ('M', 'N', 'S','F','A','TYPE','atrophy')
+AGENTS = ("mic","neu","sAb","fAb","ast","typ","group")
+ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+
+class Volume_of_Interest:
+    # Constructor
+    def __init__(self, label, name, descr):
+        self.label = label
+        self.name = name
+        self.descr = descr
+
+### setup the VOIs
+data = np.genfromtxt("/home/mho18/braimmu/base/voi.txt", delimiter=",", dtype="|U40", comments='#')
+
+voi = []
+for i in range(len(data)):
+    voi.append( Volume_of_Interest(int(data[i][0]) , data[i][1], data[i][2]) )
+data = []
+
+random_color = np.random.rand (len(voi),3)
 
 x = []
 y = []
 Npoints = []
-
-agents = []
-agents0 = []
 
 Nx = np.zeros(4, dtype=np.int32)
 dx = np.zeros(3, dtype=np.float32)
@@ -94,11 +108,9 @@ def main():
     #data = np.genfromtxt(fr, dtype=np.float32, skip_header=2, max_rows = 1)
     img = nib.load(fr)
     data = img.get_fdata()
-    data_sec = []
 
     img0 = nib.load(fr0)
     data0 = img0.get_fdata()
-    data_sec0 = []
     
     Nx[0], Nx[1], Nx[2], dum, Nx[3] = data.shape
     dx[0], dx[1], dx[2], dt, dum = img.header.get_zooms()
@@ -108,36 +120,19 @@ def main():
         lx[i] = Nx[i] * dx[i]
     
     # dim0
-    data_sec.append(data[sec[0]-1,:,:,0,:])
-    data_sec0.append(data0[sec[0]-1,:,:,0,:])
     Npoints.append(Nx[1] * Nx[2])
     x.append(np.zeros(Npoints[0], dtype=np.float32))
     y.append(np.zeros(Npoints[0], dtype=np.float32))
-    agents.append([])
-    agents0.append([])
     
     # dim1
-    data_sec.append(data[:,sec[1]-1,:,0,:])
-    data_sec0.append(data0[:,sec[1]-1,:,0,:])
     Npoints.append(Nx[0] * Nx[2])
     x.append(np.zeros(Npoints[1], dtype=np.float32))
     y.append(np.zeros(Npoints[1], dtype=np.float32))
-    agents.append([])
-    agents0.append([])
     
     # dim2
-    data_sec.append(data[:,:,sec[2]-1,0,:])
-    data_sec0.append(data0[:,:,sec[2]-1,0,:])
     Npoints.append(Nx[0] * Nx[1])
     x.append(np.zeros(Npoints[2], dtype=np.float32))
     y.append(np.zeros(Npoints[2], dtype=np.float32))
-    agents.append([])
-    agents0.append([])
-    
-    for i in range(3):
-        for j in range(Nx[3]):
-            agents[i].append(np.zeros(Npoints[i], dtype=np.float32))
-            agents0[i].append(np.zeros(Npoints[i], dtype=np.float32))
     
     # dim 0
     ii = 1
@@ -148,10 +143,6 @@ def main():
         for j in range(Nx[jj]):
             x[0][c] = dum
             y[0][c] = dx[jj] * j
-            
-            for ag_id in range(Nx[3]):
-                agents[0][ag_id][c] = data_sec[0][i,j,ag_id]
-                agents0[0][ag_id][c] = data_sec0[0][i,j,ag_id]
             
             c += 1
     
@@ -165,10 +156,6 @@ def main():
             x[1][c] = dum
             y[1][c] = dx[jj] * j
             
-            for ag_id in range(Nx[3]):
-                agents[1][ag_id][c] = data_sec[1][i,j,ag_id]
-                agents0[1][ag_id][c] = data_sec0[1][i,j,ag_id]
-            
             c += 1
     
     # dim 2
@@ -180,10 +167,6 @@ def main():
         for j in range(Nx[jj]):
             x[2][c] = dum
             y[2][c] = dx[jj] * j
-            
-            for ag_id in range(Nx[3]):
-                agents[2][ag_id][c] = data_sec[2][i,j,ag_id]
-                agents0[2][ag_id][c] = data_sec0[2][i,j,ag_id]
             
             c += 1
     
@@ -207,18 +190,19 @@ def main():
         cut_max = np.max(zs)
 
         Zscore = []
-        for i in range(3):
-            Zscore.append( ( agents[i][me] - mu)/sig )
+        Zscore.append( ( data[sec[0]-1,:,:,0,me].flatten() - mu)/sig )
+        Zscore.append( ( data[:,sec[1]-1,:,0,me].flatten() - mu)/sig )
+        Zscore.append( ( data[:,:,sec[2]-1,0,me].flatten() - mu)/sig )
 
         fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
 
         z   = data[:,:,:,0,me].flatten()
-        tis = data[:,:,:,0,-1].flatten()
+        tis = data[:,:,:,0,-2].flatten()
 
         make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
     ########################
 
-    for me in range(Nx[3]-1):
+    for me in range(Nx[3]-2):
         z = data[:,:,:,0,me].flatten()
         SMALL = 1.e-6
         z[z <= SMALL] = 0
@@ -238,31 +222,52 @@ def main():
         cut_max = np.max(zs)
         
         Zscore = []
-        for i in range(3):
-            Zscore.append( ( agents[i][me] - mu)/sig )
+        Zscore.append( ( data[sec[0]-1,:,:,0,me].flatten() - mu)/sig )
+        Zscore.append( ( data[:,sec[1]-1,:,0,me].flatten() - mu)/sig )
+        Zscore.append( ( data[:,:,sec[2]-1,0,me].flatten() - mu)/sig )
         
         fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
 
         z   = data[:,:,:,0,me].flatten()
-        tis = data[:,:,:,0,-1].flatten()
+        tis = data[:,:,:,0,-2].flatten()
 
         make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,100)
 
     # tissue
-    me = Nx[3]-1
+    me = Nx[3]-2
     z = data[:,:,:,0,me].flatten()
     Zscore = []
-    for i in range(3):
-        Zscore.append( agents[i][me] )
+    Zscore.append( data[sec[0]-1,:,:,0,me].flatten() )
+    Zscore.append( data[:,sec[1]-1,:,0,me].flatten() )
+    Zscore.append( data[:,:,sec[2]-1,0,me].flatten() )
+    
     fw = "multi/m_type_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
     make_plot(Zscore,z,tis,me,-1,3,fw,4)
 
+    # voi
+    me = Nx[3]-1
+    
+    data_raw = data[:,:,:,0,me]
+    data_voi = np.zeros_like(data_raw)
+    for i in range(len(voi)):
+        marray = np.ma.masked_where(data_raw - voi[i].label == 0, data_raw)
+        data_voi += marray.mask * (i + 1)
+    
+    z = data_voi.flatten()
+    Zscore = []
+    Zscore.append( data_voi[sec[0]-1,:,:].flatten() )
+    Zscore.append( data_voi[:,sec[1]-1,:].flatten() )
+    Zscore.append( data_voi[:,:,sec[2]-1].flatten() )
+    fw = "multi/m_voi_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    make_plot(Zscore,z,tis,me,0,len(voi),fw,len(voi))
+    
     # attrophy (1-N)
     me = 1
     atrophy = []
-    for i in range(3):
-        atrophy.append(- agents[i][me] / agents0[i][me] + 1.0)
-
+    atrophy.append(- data[sec[0]-1,:,:,0,me].flatten() / data0[sec[0]-1,:,:,0,me].flatten() + 1.0)
+    atrophy.append(- data[:,sec[1]-1,:,0,me].flatten() / data0[:,sec[1]-1,:,0,me].flatten() + 1.0)
+    atrophy.append(- data[:,:,sec[2]-1,0,me].flatten() / data0[:,:,sec[2]-1,0,me].flatten() + 1.0)
+    
     z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
     SMALL = 1.e-6
     z[z <= SMALL] = 0
@@ -275,29 +280,29 @@ def main():
     fw = "multi/m_atrophy_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
 
     z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
-    tis = data[:,:,:,0,-1].flatten()
+    tis = data[:,:,:,0,-2].flatten()
 
-    print('HERE')
     make_plot(atrophy,z,tis,Nx[3],cut_min,cut_max,fw,100)
     
     data = []
     data_sec = []
     data0 = []
     data_sec0 = []
-
+"""
 def prune_data():
     # find useless data
     for i in range(3):
-        marray = np.ma.masked_where(agents[i][-1] < 0,agents[i][-1]).mask
+        marray = np.ma.masked_where(data[sec[0]-1,:,:,0,-1] < 0,data[sec[0]-1,:,:,0,-1]).mask
         
         x[i] = np.ma.array(x[i], mask = marray).compressed()
         y[i] = np.ma.array(y[i], mask = marray).compressed()
     
         for j in range(Nx[3]):
             agents[i][j] = np.ma.array(agents[i][j], mask = marray).compressed()
-    
+"""
 ## plots
 def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
+    
     fig = pl.figure(figsize=(9,9))
     #ax = fig.add_subplot(111)
     ax = fig.add_axes([0.02,0.02,0.9,0.9])
@@ -308,11 +313,17 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     mlx   = MultipleLocator(10)
     mly   = MultipleLocator(10)
 
+    cmap = pl.cm.jet
     lbl = r'$z_{%s}$' % ag_sgn[me]
-    if (me == Nx[3]-1):
+    if (me == Nx[3]-2):
         lbl = r'$\rm Tissue$'
+    elif (me == Nx[3]-1):
+        lbl = r'$\rm VOI$'
+        cmap = matplotlib.colors.ListedColormap (random_color)
+        #cmap = pl.cm.get_cmap('Greys', len(voi))
     elif (me == Nx[3]):
         lbl = r'$\rm Atrophy$'
+
 
     ## dim0
     bx = lx[0] + xsep
@@ -325,9 +336,9 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     z_gr = griddata((x[0]+bx,y[0]+by), Zscore[0], (x_gr, y_gr), method='nearest')
 
     print(np.min(z_gr),cut_min)
-    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=cmap,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
-    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
+    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=cmap, vmin=cut_min, vmax=cut_max)
     
     cs.cmap.set_under('None')
     cs.cmap.set_over('k')
@@ -342,9 +353,9 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     # grid the data.
     z_gr = griddata((x[1]+bx,y[1]+by), Zscore[1], (x_gr, y_gr), method='nearest')
 
-    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=cmap,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
-    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
+    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=cmap, vmin=cut_min, vmax=cut_max)
     
     cs.cmap.set_under('None')
     cs.cmap.set_over('k')
@@ -359,9 +370,9 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     # grid the data.
     z_gr = griddata((x[2]+bx,y[2]+by), Zscore[2], (x_gr, y_gr), method='nearest')
 
-    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.jet,
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=cmap,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
-    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.jet, vmin=cut_min, vmax=cut_max)
+    #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=cmap, vmin=cut_min, vmax=cut_max)
     
     cs.cmap.set_under('None')
     cs.cmap.set_over('None')
@@ -425,11 +436,15 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
 
     # inset
     ax2 = fig.add_axes([0.48, 0.11, 0.38, 0.28], facecolor=(1.,1.,1.))
-    if (me == Nx[3]-1): # for type (tissue) histogram
+    if (me == Nx[3]-2): # for type (tissue) histogram
         Z = np.ma.masked_equal(z,-1)
         z = Z.compressed()
         ax2.hist(z, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2)  # bins='auto'
         ax2.set_xticklabels([r'$\rm -1 (empty)$',r'$\rm 0 (CSF)$', r'$\rm 1 (WM)$', r'$\rm 2 (GM)$'])
+    elif (me == Nx[3]-1): # for group (voi) histogram
+        Z = np.ma.masked_equal(z,0)
+        z = Z.compressed()
+        ax2.hist(z, histtype='stepfilled',bins=256,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2)  # bins='auto'
     else:
         marray = np.ma.masked_where(tis != 1,tis).mask
         z1 = np.ma.array(z, mask = marray).compressed()
@@ -448,10 +463,15 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
         
         ax2.hist(z2, histtype='stepfilled',bins=50,density=False, fc='grey', alpha=0.6, edgecolor='black', linewidth=1.2, label=r'$\rm GM$')  # bins='auto'
         ax2.hist(z1, histtype='stepfilled',bins=50,density=False, fc='yellow', alpha=0.8, edgecolor='black', linewidth=1.2, label=r'$\rm WM$')  # bins='auto'
-        ax2.legend(loc='upper right', fontsize=18, ncol=1)
+        ax2.legend(loc='upper right', fontsize=18, ncol=2)
 
         ax2.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
         #ax2.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
+        
+        a = np.histogram(z1,bins=50,density=False)
+        b = np.histogram(z2,bins=50,density=False)
+        
+        ax2.set_ylim(0,1.30*max(np.max(a[0]),np.max(b[0])))
         
     #ax2.set_xlim(cut_min,cut_max)
     ax2.set_yticklabels([])
