@@ -13,8 +13,12 @@ Note: number of cores should match the partitions specifications inside the inpu
 
 4- The nifti images as initial conditions have been taken from "Neuroimaging and Surgical Technologies Lab", with web address:"http://nist.mni.mcgill.ca/?p=904"; the original file names are:
 ICBM 2009c Nonlinear Symmetric 1×1x1mm template: NIFTI 55MB
-./example/wm.nii  -> mni_icbm152_wm_tal_nlin_sym_09c.nii
-./example/gm.nii  -> mni_icbm152_gm_tal_nlin_sym_09c.nii
-./example/csf.nii -> mni_icbm152_csf_tal_nlin_sym_09c.nii
+./base/wm.nii  -> white matter: mni_icbm152_wm_tal_nlin_sym_09c.nii
+./base/gm.nii  -> gray matter: mni_icbm152_gm_tal_nlin_sym_09c.nii
+./base/csf.nii -> cerebrospinal fluid: mni_icbm152_csf_tal_nlin_sym_09c.nii
+
+Courtesy of Dr. Vladimir S. Fonov, McGill University, Montreal Neurological Institute, Brain Imaging Center
+./base/voi.nii -> volume of interest (VOI): mni_icbm152_lob_tal_nlin_sym_09c.nii
+./base/voi.txt -> VOIs descriptions
 
 5- Enjoy!
