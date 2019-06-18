@@ -18,6 +18,7 @@ import subprocess
 import os
 import nibabel as nib
 import math
+import matplotlib.image as mpimg
 
 rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 26})
 rc('text', usetex=True)
@@ -42,10 +43,19 @@ time = sys.argv[5]
 realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ")
-ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm Atrophy$')
-ag_sgn = ('M', 'N', 'S','F','A','TYPE','atrophy')
+AGENTS = ("mic","neu","sAb","fAb","ast","typ","group")
+ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+
+me_mic = 0
+me_neu = 1
+me_sAb = 2
+me_fAb = 3
+me_ast = 4
+me_typ = 5
+me_group = 6
+me_atrophy = 7
 
 x = []
 y = []
@@ -191,7 +201,7 @@ def main():
     
     ag = []
     Zscore = []
-    for me in range(Nx[3]-1):
+    for me in range(Nx[3]-2):
         Zscore.append([])
         z = data[:,:,:,0,me].flatten()
         SMALL = 1.e-6
@@ -223,72 +233,123 @@ def main():
     Pearson = []
     for i in range(3):
         Pearson.append(Zscore[me][i] * Zscore[me2][i] / (len(Zscore[me][i])))
+        Pearson[i][agents[i][Nx[3]-2] <= 0] = np.nan
         
+        X = Pearson[i][~np.isnan(Pearson[i])]
+
         if (i == 0):
-            cut_max = np.max(Pearson[i])
-            cut_min = np.min(Pearson[i])
+            cut_max = np.max(X)
+            cut_min = np.min(X)
         else:
-            if (cut_max < np.max(Pearson[i])):
-                cut_max = np.max(Pearson[i])
-            if (cut_min > np.min(Pearson[i])):
-                cut_min = np.min(Pearson[i])
+            if (cut_max < np.max(X)):
+                cut_max = np.max(X)
+            if (cut_min > np.min(X)):
+                cut_min = np.min(X)
     
     if (cut_min < 0.0):
         cut_min *= -1.0
     if (cut_max < 0.0):
         cut_max *= -1.0
-    if (cut_min > cut_max):
+    if (cut_min < cut_max):
         cut_max = cut_min
     else:
         cut_min = cut_max
     cut_min *= -1.0
     
-    for i in range(3):
-        for c in range(Npoints[i]):
-            if (agents[i][Nx[3]-1][c] <= 0):
-                Pearson[i][c] = cut_max - cut_min
+    #for i in range(3):
+     #   for c in range(Npoints[i]):
+      #      if (agents[i][Nx[3]-2][c] <= 0):
+               # Pearson[i][c] = cut_max - cut_min
 
-    fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
     
     make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,100)
     ########################
 
-    for me in range(Nx[3]-1):
-        for me2 in range(me+1,Nx[3]-1):
+    for me in range(Nx[3]-2):
+        for me2 in range(me+1,Nx[3]-2):
             
             print(ag_sgn[me],ag_sgn[me2])
             
             Pearson = []
             for i in range(3):
                 Pearson.append(Zscore[me][i] * Zscore[me2][i] / (len(Zscore[me][i])))
+                Pearson[i][agents[i][Nx[3]-2] <= 0] = np.nan
+                
+                X = Pearson[i][~np.isnan(Pearson[i])]
                 
                 if (i == 0):
-                    cut_max = np.max(Pearson[i])
-                    cut_min = np.min(Pearson[i])
+                    cut_max = np.max(X)
+                    cut_min = np.min(X)
                 else:
-                    if (cut_max < np.max(Pearson[i])):
-                        cut_max = np.max(Pearson[i])
-                    if (cut_min > np.min(Pearson[i])):
-                        cut_min = np.min(Pearson[i])
+                    if (cut_max < np.max(X)):
+                        cut_max = np.max(X)
+                    if (cut_min > np.min(X)):
+                        cut_min = np.min(X)
             
             if (cut_min < 0.0):
                 cut_min *= -1.0
             if (cut_max < 0.0):
                 cut_max *= -1.0
-            if (cut_min > cut_max):
+            if (cut_min < cut_max):
                 cut_max = cut_min
             else:
                 cut_min = cut_max
             cut_min *= -1.0
             
-            for i in range(3):
-                for c in range(Npoints[i]):
-                    if (agents[i][Nx[3]-1][c] <= 0):
-                        Pearson[i][c] = cut_max - cut_min
+            #for i in range(3):
+             #   for c in range(Npoints[i]):
+              #      if (agents[i][Nx[3]-2][c] <= 0):
+                        #Pearson[i][c] = cut_max - cut_min
 
-            fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+            fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
             
-            make_plot(Pearson,ag,tis,me,me2,0.05*cut_min,0.05*cut_max,fw,100)
+            make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,100)
+    
+    # combine all diagrams
+    combine_plots()
+
+## plots
+def combine_plots():
+    me_1 = ( me_mic, me_mic, me_mic, me_neu, me_neu, me_neu, me_sAb, me_sAb, me_fAb )
+    me_2 = ( me_fAb, me_neu, me_sAb, me_ast, me_fAb, me_sAb, me_ast, me_fAb, me_ast )
+    tit  = ( r'a'  , r'b',     r'c',   r'd',   r'e',   r'f',   r'g',   r'h',   r'i' )
+    
+    fig = pl.figure(figsize=(15,15))
+
+    n_X = 3
+    n_Y = 3
+    
+    b_X = 0.01
+    b_Y = 0.01
+    
+    sep_X = 0.01
+    sep_Y = 0.01
+    
+    l_X = 0.96 / n_X
+    l_Y = 0.96 / n_Y
+    
+    c= 0
+    # from top left to bottom right
+    for j in range(n_Y):
+        y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
+        for i in range(n_X):
+            x_ax = b_X + (l_X + sep_X) * i
+            
+            ax = fig.add_axes([x_ax, y_ax, l_X, l_Y], facecolor=(1.,1.,1.))
+            ax.set_axis_off()
+            
+            fw = "corr/corr_" + AGENTS[me_1[c]] + "_" + AGENTS[me_2[c]] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+            im = mpimg.imread(fw)
+            ax.imshow(im)
+            
+            fig.text(x_ax + 0.01, y_ax + l_Y - 0.02, tit[c], fontsize=30)
+            
+            c += 1
+
+    fw = "corr/corr_all_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
+    pl.savefig(fw + '.png', format = 'png', dpi=200, orientation='landscape')
+    pl.close()
 
 def prune_data():
     # find useless data
@@ -324,13 +385,13 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     
     # grid the data.
     z_gr = griddata((x[0]+bx,y[0]+by), Pearson[0], (x_gr, y_gr), method='nearest')
-
+    
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
-                             levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
+                             levels = np.linspace(cut_min,cut_max,contour_levels), extend='both')
     #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.coolwarm, vmin=cut_min, vmax=cut_max)
     
-    cs.cmap.set_under('None')
-    cs.cmap.set_over('None')
+    #cs.cmap.set_under('None')
+    #cs.cmap.set_over('None')
 
     ## dim1
     bx = 0.0
@@ -346,8 +407,8 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
     #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.coolwarm, vmin=cut_min, vmax=cut_max)
     
-    cs.cmap.set_under('None')
-    cs.cmap.set_over('k')
+    #cs.cmap.set_under('None')
+    #cs.cmap.set_over('None')
     
     ## dim2
     bx = 0.0
@@ -363,8 +424,8 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
     #cs = ax.pcolor(x_gr,y_gr,z_gr, cmap=pl.cm.coolwarm, vmin=cut_min, vmax=cut_max)
     
-    cs.cmap.set_under('None')
-    cs.cmap.set_over('None')
+    #cs.cmap.set_under('None')
+    #cs.cmap.set_over('None')
     
     ## section  lines
     ax.plot([xsep,lx[0]],[sec[1]*dx[1], sec[1]*dx[1]],'k-',lw=0.5)
@@ -411,24 +472,39 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     #ax.set_yticklabels([])
 
     #if (i_x == n_X - 1 and i_y == 0) :
-    cbar_ax = fig.add_axes([0.93,0.15,0.02,0.7])
+    cbar_ax = fig.add_axes([0.93,0.20,0.02,0.7])
     cbar = pl.colorbar(cs,cax=cbar_ax)
-    cbar.set_ticks([cut_min,cut_max])
+    cbar.set_ticks([cut_min,0,cut_max])
     #mticks = cbar.norm([0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,2,3,4,5,6,7,8,9,10,20])
     #cbar.ax.yaxis.set_ticks(mticks, minor=True)
     #cbar.set_ticklabels([0, r'%.2e' % np.max(z)])
-    cbar.ax.set_yticklabels([r'$\rm %.1e$' % cut_min, r'$\rm %.1e$' % cut_max],rotation=90,fontsize=30)
+    cbar.ax.set_yticklabels([r'$\rm %.1e$' % cut_min, '', r'$\rm %.1e$' % cut_max],rotation=90,fontsize=30)
     #cbar.ax.set_yticklabels([r'$\rm %.1f$' % cut_min, r'$\rm %.1f$' % cut_max],rotation=90,fontsize=30)
     fig.text(0.96,0.5,lbl, rotation='vertical', fontsize=30)
     
     ax.set_aspect('equal')
 
-    # inset 1
+    # inset
+    ax2 = fig.add_axes([0.56, 0.11, 0.32, 0.32], facecolor=(1.,1.,1.))
+    marray = np.ma.masked_where(tis <= 0,tis).mask
+    z11 = np.ma.array(ag[me], mask = marray).compressed()
+    z12 = np.ma.array(ag[me2], mask = marray).compressed()
+    ax2.hist2d(z11, z12, bins=200, cmap='Blues',alpha=1, norm = matplotlib.colors.LogNorm())
+    
+    ax2.tick_params(axis='both', which='major', labelsize=20)
+
+    lblx = r'$z_{%s}$' % ag_sgn[me]
+    ax2.set_xlabel(lblx, fontsize = 26)
+    lbly = r'$z_{%s}$' % ag_sgn[me2]
+    ax2.set_ylabel(lbly, fontsize = 26)
+
+    """
+        # inset 1
     ax2 = fig.add_axes([0.49, 0.11, 0.2, 0.2], facecolor=(1.,1.,1.))
     marray = np.ma.masked_where(tis != 1,tis).mask
     z11 = np.ma.array(ag[me], mask = marray).compressed()
     z12 = np.ma.array(ag[me2], mask = marray).compressed()
-    ax2.hist2d(z11, z12, bins=200, cmap='Greys', norm = matplotlib.colors.PowerNorm(0.1),alpha=1)
+    ax2.hist2d(z11, z12, bins=200, cmap='Blues',alpha=1, norm = matplotlib.colors.LogNorm())
     
     ax2.tick_params(axis='both', which='major', labelsize=20)
 
@@ -438,15 +514,15 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     lbly = r'$z_{%s}$' % ag_sgn[me2]
     ax2.set_ylabel(lbly, fontsize = 26)
 
-    ax2.set_xlim(np.min(ag[me]),np.max(ag[me]))
-    ax2.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
+    #ax2.set_xlim(np.min(ag[me]),np.max(ag[me]))
+    #ax2.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
 
     # inset 2
     ax3 = fig.add_axes([0.71, 0.11, 0.2, 0.2], facecolor=(1.,1.,1.))
     marray = np.ma.masked_where(tis != 2,tis).mask
     z21 = np.ma.array(ag[me], mask = marray).compressed()
     z22 = np.ma.array(ag[me2], mask = marray).compressed()
-    ax3.hist2d(z21, z22, bins=200, cmap='Greys', norm = matplotlib.colors.PowerNorm(0.1),alpha=1)
+    ax3.hist2d(z21, z22, bins=200, cmap='Blues', alpha=1, norm = matplotlib.colors.LogNorm()) #matplotlib.colors.PowerNorm(1))
     
     ax3.tick_params(axis='both', which='major', labelsize=20)
     
@@ -457,10 +533,11 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     #lbly = r'$z_{%s}$' % ag_sgn[me2]
     #ax3.set_ylabel(lbly, fontsize = 26)
     
-    ax3.set_xlim(np.min(ag[me]),np.max(ag[me]))
-    ax3.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
+    #ax3.set_xlim(np.min(ag[me]),np.max(ag[me]))
+    #ax3.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
+    """
 
-    pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
+    pl.savefig(fw + '.png', format = 'png', dpi=100, orientation='landscape')
     pl.close()
 
 if __name__ == '__main__':

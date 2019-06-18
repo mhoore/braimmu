@@ -73,6 +73,7 @@ void Brain::allocations() {
   for (int ag_id=0; ag_id<num_agents; ag_id++)
     init_val[ag_id] = -1.0;
 
+  Dtau_max = diff_tau = 0.0;
   D_sAb = diff_sAb = 0.0;
   D_mic = diff_mic = 0.0;
   cs = sens_s = cf = sens_f = 0.0;
@@ -129,6 +130,8 @@ void Brain::destroy() {
 
   memory->destroy(agent);
   memory->destroy(deriv);
+
+  memory->destroy(Dtau);
 
   if(nim)
     nifti_image_free(nim);

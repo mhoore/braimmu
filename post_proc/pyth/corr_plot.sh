@@ -1,6 +1,6 @@
 #!/bin/bash
 
-time=4000000
+time=5000000
 freq=100000
 dt=0.001
 
@@ -40,5 +40,7 @@ done
   ffmpeg -framerate 2 -start_number 10000 -i corr/corr_sAb_ast_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}_t%d.png -qscale 24 -r 2 -pix_fmt yuv420p gifs/corr_sAb_ast_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}.gif
 
   ffmpeg -framerate 2 -start_number 10000 -i corr/corr_fAb_ast_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}_t%d.png -qscale 24 -r 2 -pix_fmt yuv420p gifs/corr_fAb_ast_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}.gif
+  
+  ffmpeg -framerate 2 -start_number 10000 -i corr/corr_all_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}_t%d.png -qscale 24 -r 2 -pix_fmt yuv420p gifs/corr_all_s${sec0[$i]}_${sec1[$i]}_${sec2[$i]}.gif
   
 done

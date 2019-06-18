@@ -666,6 +666,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
   double **agent = brn->agent;
 
+  double **Dtau = brn->Dtau;
+
   int dsize = 3;
   tagint c = 3;
   while (c < arg.size()) {
@@ -673,6 +675,13 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
       dsize++;
     else if (!arg[c].compare("group"))
       dsize++;
+    else if (!arg[c].compare("rgb")) {
+      if (c != arg.size() - 1) {
+        printf("Error: dump_mri: rgb keyword should be the last. \n");
+        exit(1);
+      }
+      dsize += 3;
+    }
     else if (!arg[c].compare("me"))
       dsize++;
     else if (brn->input->find_agent(arg[c]) >= 0)
@@ -703,6 +712,11 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
             send_buf[c++] = ubuf(type[i]).d;
           else if (!arg[aid].compare("group"))
             send_buf[c++] = ubuf(group[i]).d;
+          else if (!arg[aid].compare("rgb")) {
+            send_buf[c++] = Dtau[0][i];
+            send_buf[c++] = Dtau[1][i];
+            send_buf[c++] = Dtau[2][i];
+          }
           else if (!arg[aid].compare("me"))
             send_buf[c++] = ubuf(me).d;
           else if (ag_id >= 0)
@@ -769,6 +783,13 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (!arg[aid].compare("group"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
+        else if (!arg[aid].compare("rgb")) {
+          data[cnim] = (float) recv_buf[c++];
+          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-2) ) );
+          data[cnim] = (float) recv_buf[c++];
+          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-1) ) );
+          data[cnim] = (float) recv_buf[c++];
+        }
         else if (!arg[aid].compare("me"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (ag_id >= 0)
@@ -874,7 +895,7 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
   nim->intent_code = intent; // NIFTI_INTENT_VECTOR;
 
   nim->datatype = DT_FLOAT32;
-  nim->nbyper = 16;
+  nim->nbyper = 4;
 
   nim->slice_start = 0;
   nim->pixdim[0] = 1;

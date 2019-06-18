@@ -310,6 +310,7 @@ int Input::read_parameters(Brain *brn) {
     }
     else if (!(*arg)[c].compare("c_cir")) brn->c_cir = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("tau_cir")) brn->tau_cir = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("diff_tau")) brn->diff_tau = stof((*arg)[c+1]);
     else if (find_agent((*arg)[c]) >= 0) brn->init_val[find_agent((*arg)[c])] = stof((*arg)[c+1]);
     else return 0;
 

@@ -85,6 +85,7 @@ class Brain {
 
   /// model parameters
   double **agent, **deriv; // agents and their time derivatives
+  double **Dtau, Dtau_max, diff_tau; // diffusion tensor for tau protein
   double init_val[num_agents];
   double D_sAb, diff_sAb; // diffusivity of sAb
   double D_mic, diff_mic; // diffusivity of microglia
@@ -92,7 +93,6 @@ class Brain {
   double kp, kn; // rate of polymerization and nucleation
   double ds,df; // clearance rate of sAb and fAb by microglia
   double es; // rate of sAb efflux in CSF
-  double c_mic, vel_mic; // velocity of microglia (speed of chemotaxis)
   double dna; // neuronal death rate due to astogliosis
   double dnf; // neuronal death rate due to fibrillization
   double Ha; // Michaelis-Menten constant for astrogliosis

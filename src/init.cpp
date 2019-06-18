@@ -39,6 +39,9 @@ void Init::setup(Brain *brn) {
     printf("Setup: setting voxels ... \n");
 
   boundaries(brn);
+
+  set_parameters(brn);
+
   brn->comm->partition(brn);
   voxels(brn,0);
   brn->region->apply_regions(brn);
@@ -53,8 +56,6 @@ void Init::setup(Brain *brn) {
     brn->region->apply_regions(brn);
     itr++;
   }
-
-  set_parameters(brn);
 
   if (!me)
     printf("Setting communications ... \n");
@@ -98,8 +99,9 @@ void Init::read_mri(Brain *brn) {
     else if (mri_arg[i][0].compare("wm") &&
              mri_arg[i][0].compare("gm") &&
              mri_arg[i][0].compare("csf") &&
-             mri_arg[i][0].compare("group")) {
-      printf("Error: read_mri unknown keyword. keywords: wm, gm, csf, group, all, restart. \n");
+             mri_arg[i][0].compare("group") &&
+             mri_arg[i][0].compare("rgb") ) {
+      printf("Error: read_mri unknown keyword. keywords: wm, gm, csf, group, rgb, all, restart. \n");
       exit(1);
     }
 
@@ -431,6 +433,8 @@ void Init::allocations(Brain *brn, int allocated) {
   create(brn->agent,num_agents,brn->nall,"agent");
   create(brn->deriv,num_agents,brn->nall,"deriv");
 
+  create(brn->Dtau,3,brn->nall,"Dtau");
+
   if (!allocated)
     create(map,brn->nvoxel,"map");
 
@@ -452,6 +456,7 @@ void Init::set_parameters(Brain *brn) {
   brn->cs = brn->sens_s * brn->vlen_2;
   brn->cf = brn->sens_f * brn->vlen_2;
   brn->omega_cir = 2.0 * PI / brn->tau_cir;
+  brn->Dtau_max = brn->diff_tau * brn->vlen_2;
 
 }
 
@@ -512,6 +517,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   int *group = brn->group;
   double **agent = brn->agent;
 
+  double **Dtau = brn->Dtau;
+
   double vlen_1 = brn->vlen_1;
 
   double conver_fac = 1.0;
@@ -526,6 +533,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   for (int i=0; i<nall; i++) {
     type[i] = EMP_type;
     group[i] = 0;
+    Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = brn->Dtau_max;
   }
 
   /* -------------------------------------------------------
@@ -659,12 +667,14 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     double max_val, thres_val;
 
     double *v_prop;
+    double **rgb_prop;
     int *n_prop;
 
     brn->memory->create(v_prop,nall,"init:v_prop");
+    brn->memory->create(rgb_prop,nall,3,"init:v_prop");
     brn->memory->create(n_prop,nall,"init:n_prop");
 
-    // go though all mri files
+    // go through all mri files
     for (int tis=0; tis<mri_arg.size(); tis++) {
       nifti_image *nim_tmp = NULL;
 
@@ -683,6 +693,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         ptrf = (float *) nim_tmp->data;
       else if (nim_tmp->datatype == DT_FLOAT64)
         ptrd = (double *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_RGB24)
+        ptr_rgb = (uint8_t *) nim_tmp->data;
       else {
         printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim_tmp->datatype);
         exit(1);
@@ -690,6 +702,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
       for (int i=0; i<nall; i++) {
         v_prop[i] = 0.0;
+        rgb_prop[i][0] = rgb_prop[i][1] = rgb_prop[i][2] = 0.0;
         n_prop[i] = 0;
       }
 
@@ -736,6 +749,12 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
                 v_prop[vid] += static_cast<double>(ptrf[c]);
               else if (nim_tmp->datatype == DT_FLOAT64)
                 v_prop[vid] += static_cast<double>(ptrd[c]);
+              else if (nim_tmp->datatype == DT_RGB24) {
+                rgb_prop[vid][0] += static_cast<double>(ptr_rgb[3*c]);
+                rgb_prop[vid][1] += static_cast<double>(ptr_rgb[3*c + 1]);
+                rgb_prop[vid][2] += static_cast<double>(ptr_rgb[3*c + 2]);
+              }
+
               n_prop[vid]++;
 
               //printf("HERE: proc %i: vid = %i, v_prop[vid] = %g, ptr16[c] = %i, c = %i, %i \n",
@@ -751,10 +770,16 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
       // set voxel properties based on the nifti_image data
       for (int i=0; i<nall; i++) {
 
-        if (n_prop[i] > 0)
-          v_prop[i] /= n_prop[i];
+        if (n_prop[i] > 0) {
+          double dum = 1.0 / n_prop[i];
+          v_prop[i] *= dum;
+          rgb_prop[i][0] *= dum;
+          rgb_prop[i][1] *= dum;
+          rgb_prop[i][2] *= dum;
+        }
 
         double coef = 1.0 / (1.0 - thres_val);
+        double coef_rgb = 1.0 / (max_val - thres_val);
         /* ----------------------------------------------------------------------
          * criteria based on mri file
          * setup all types and groups from a single file
@@ -814,6 +839,16 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           if (fractpart != 0) continue;
           group[i] = static_cast<int>( v_prop[i] );
         }
+        /* ----------------------------------------------------------------------
+         * setup diffusion tensor from RGB file
+         * ----------------------------------------------------------------------*/
+        else if (!mri_arg[tis][0].compare("rgb")) {
+          if (rgb_prop[i][0] > thres_val) {
+            Dtau[0][i] = (rgb_prop[i][0] - thres_val) * coef_rgb * brn->Dtau_max;
+            Dtau[1][i] = (rgb_prop[i][1] - thres_val) * coef_rgb * brn->Dtau_max;
+            Dtau[2][i] = (rgb_prop[i][2] - thres_val) * coef_rgb * brn->Dtau_max;
+          }
+        }
 
       }
 
@@ -827,11 +862,20 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   }
 
   // set all values to zero for EMT_type voxels
-  for (int i=0; i<nall; i++)
+  for (int i=0; i<nall; i++) {
     if (type[i] == EMP_type) {
       for (int ag_id=0; ag_id<num_agents; ag_id++)
         agent[ag_id][i] = 0.0;
+      Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = 0.0;
     }
+
+    else if (type[i] == CSF_type)
+      Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = brn->Dtau_max;
+
+    //printf("HERE %li max = %g , %g %g %g \n",
+      //     i, brn->Dtau_max, Dtau[0][i],Dtau[1][i],Dtau[2][i]);
+
+  }
 
 }
 

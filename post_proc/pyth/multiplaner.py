@@ -18,6 +18,7 @@ import subprocess
 import os
 import nibabel as nib
 import math
+import matplotlib.image as mpimg
 
 rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 26})
 rc('text', usetex=True)
@@ -42,10 +43,19 @@ time = sys.argv[5]
 realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ","group")
+AGENTS = ("mic","neu","sAb","fAb","ast","typ","group", "atrophy")
 ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
 ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
 ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+
+me_mic = 0
+me_neu = 1
+me_sAb = 2
+me_fAb = 3
+me_ast = 4
+me_typ = 5
+me_group = 6
+me_atrophy = 7
 
 class Volume_of_Interest:
     # Constructor
@@ -194,7 +204,7 @@ def main():
         Zscore.append( ( data[:,sec[1]-1,:,0,me].flatten() - mu)/sig )
         Zscore.append( ( data[:,:,sec[2]-1,0,me].flatten() - mu)/sig )
 
-        fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+        fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
 
         z   = data[:,:,:,0,me].flatten()
         tis = data[:,:,:,0,-2].flatten()
@@ -226,7 +236,7 @@ def main():
         Zscore.append( ( data[:,sec[1]-1,:,0,me].flatten() - mu)/sig )
         Zscore.append( ( data[:,:,sec[2]-1,0,me].flatten() - mu)/sig )
         
-        fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+        fw = "multi/m_Z_" + AGENTS[me] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
 
         z   = data[:,:,:,0,me].flatten()
         tis = data[:,:,:,0,-2].flatten()
@@ -241,7 +251,7 @@ def main():
     Zscore.append( data[:,sec[1]-1,:,0,me].flatten() )
     Zscore.append( data[:,:,sec[2]-1,0,me].flatten() )
     
-    fw = "multi/m_type_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    fw = "multi/m_type_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
     make_plot(Zscore,z,tis,me,-1,3,fw,4)
 
     # voi
@@ -258,7 +268,7 @@ def main():
     Zscore.append( data_voi[sec[0]-1,:,:].flatten() )
     Zscore.append( data_voi[:,sec[1]-1,:].flatten() )
     Zscore.append( data_voi[:,:,sec[2]-1].flatten() )
-    fw = "multi/m_voi_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    fw = "multi/m_voi_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
     make_plot(Zscore,z,tis,me,0,len(voi),fw,len(voi))
     
     # attrophy (1-N)
@@ -277,7 +287,7 @@ def main():
     cut_min = 0.0
     cut_max = 1.0
     
-    fw = "multi/m_atrophy_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    fw = "multi/m_atrophy_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
 
     z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
     tis = data[:,:,:,0,-2].flatten()
@@ -288,6 +298,54 @@ def main():
     data_sec = []
     data0 = []
     data_sec0 = []
+    
+    print('HERE')
+    # combine all diagrams
+    combine_plots()
+
+## plots
+def combine_plots():
+    me_1 = ( me_mic, me_neu, me_atrophy, me_fAb, me_sAb, me_ast )
+    tit  = (   r'a',   r'b',       r'c',   r'd',   r'e',   r'f' )
+    
+    fig = pl.figure(figsize=(15,10))
+
+    n_X = 3
+    n_Y = 2
+    
+    b_X = 0.01
+    b_Y = 0.01
+    
+    sep_X = 0.01
+    sep_Y = 0.01
+    
+    l_X = 0.96 / n_X
+    l_Y = 0.97 / n_Y
+    
+    c= 0
+    # from top left to bottom right
+    for j in range(n_Y):
+        y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
+        for i in range(n_X):
+            x_ax = b_X + (l_X + sep_X) * i
+            
+            ax = fig.add_axes([x_ax, y_ax, l_X, l_Y], facecolor=(1.,1.,1.))
+            ax.set_axis_off()
+            
+            fw = "multi/m_Z_" + AGENTS[me_1[c]] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+            if (me_1[c] == me_atrophy):
+                fw = "multi/m_" + AGENTS[me_1[c]] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+            im = mpimg.imread(fw)
+            ax.imshow(im)
+            
+            fig.text(x_ax + 0.01, y_ax + l_Y - 0.03, tit[c], fontsize=30)
+            
+            c += 1
+
+    fw = "multi/m_all_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
+    pl.savefig(fw + '.png', format = 'png', dpi=200, orientation='landscape')
+    pl.close()
+    
 """
 def prune_data():
     # find useless data
@@ -480,7 +538,7 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     #ax2.set_xlabel(ag_names[me], fontsize = 26)
     #ax2.set_ylabel(r'$\rm probability$')
 
-    pl.savefig(fw, format = 'png', dpi=100, orientation='landscape')
+    pl.savefig(fw + '.png', format = 'png', dpi=100, orientation='landscape')
     pl.close()
 
 if __name__ == '__main__':
