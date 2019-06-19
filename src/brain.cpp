@@ -74,6 +74,7 @@ void Brain::allocations() {
     init_val[ag_id] = -1.0;
 
   Dtau_max = diff_tau = 0.0;
+  ktau = etau = dnt = 0.0;
   D_sAb = diff_sAb = 0.0;
   D_mic = diff_mic = 0.0;
   cs = sens_s = cf = sens_f = 0.0;

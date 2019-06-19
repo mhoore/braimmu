@@ -84,9 +84,12 @@ class Brain {
   nifti_image *nim;
 
   /// model parameters
+  double init_val[num_agents];
   double **agent, **deriv; // agents and their time derivatives
   double **Dtau, Dtau_max, diff_tau; // diffusion tensor for tau protein
-  double init_val[num_agents];
+  double ktau; // tau protein aggregation rate
+  double etau; // rate of tau efflux in CSF
+  double dnt; // neuronal death rate due to tau accumulation
   double D_sAb, diff_sAb; // diffusivity of sAb
   double D_mic, diff_mic; // diffusivity of microglia
   double cs, sens_s, cf, sens_f; // microglia chemotaxis sensitivity
