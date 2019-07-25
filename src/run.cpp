@@ -68,38 +68,47 @@ void Brain::derivatives() {
         if (type[i] == EMP_type) continue;
 
         // direct function or time derivatives
-        double dum = kp * agent[sAb][i] * agent[fAb][i]
-                   + kn * agent[sAb][i] * agent[sAb][i];
-
-        // sAb
-        deriv[sAb][i] += agent[neu][i] * agent[cir][i]
-                          - dum
-                          - ds * agent[mic][i] * agent[sAb][i];
-        // fAb
-        deriv[fAb][i] += dum
-                          - df * agent[mic][i] * agent[fAb][i];
 
         // sAb, fAb, and tau efflux from CSF
         if (type[i] == CSF_type) {
           deriv[sAb][i] -= es * agent[sAb][i];
           deriv[fAb][i] -= es * agent[fAb][i];
-          deriv[tau][i] -= etau * agent[tau][i];
+          deriv[phr][i] -= ephi * agent[phr][i];
         }
+        // in parenchyma (WM and GM)
+        else {
+          double dum = kp * agent[sAb][i] * agent[fAb][i]
+                     + kn * agent[sAb][i] * agent[sAb][i];
 
-        // tau protein aggregation due to fAb and neu
-        deriv[tau][i] += ktau * agent[fAb][i] * agent[neu][i];
+          // sAb
+          deriv[sAb][i] += agent[neu][i] * agent[cir][i]
+                            - dum
+                            - ds * agent[mic][i] * agent[sAb][i];
+          // fAb
+          deriv[fAb][i] += dum
+                           - df * agent[mic][i] * agent[fAb][i];
 
-        // neuronal death due to tau aggregation
-        deriv[neu][i] -= dnt * agent[tau][i] * agent[neu][i];
+          dum = ktau * agent[phr][i];
 
-        // astrogliosis
-        dum = agent[fAb][i] * agent[mic][i];
-        deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+          // tau protein phosphorylation due to fAb and neu
+          deriv[phr][i] += kphi * agent[fAb][i] * agent[neu][i]
+                         - dum;
 
-        // circadian rhythm
-        if (c_cir > 0)
-          deriv[cir][i] = - C_cir * c_cir * omega_cir
+          // tau tangle formation from phosphorylated tau
+          deriv[tau][i] += dum;
+
+          // neuronal death due to tau aggregation
+          deriv[neu][i] -= dnt * agent[tau][i] * agent[neu][i];
+
+          // astrogliosis
+          dum = agent[fAb][i] * agent[mic][i];
+          deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+
+          // circadian rhythm
+          if (c_cir > 0)
+            deriv[cir][i] = - C_cir * c_cir * omega_cir
                             * sin(omega_cir * dt * step);
+        }
 
         // spatial derivatives: fluxes
         for (int hh=0; hh<num_neigh[i]; hh++) {
@@ -107,12 +116,12 @@ void Brain::derivatives() {
 
           if (type[j] == EMP_type) continue;
 
-          double del_tau = agent[tau][i] - agent[tau][j];
+          double del_phr = agent[phr][i] - agent[phr][j];
 
           // diffusion of tau
-          double dum = 0.5 * (Dtau[hh][i] + Dtau[hh][j]) * del_tau;
-          deriv[tau][i] -= dum;
-          deriv[tau][j] += dum;
+          double dum = 0.5 * (Dtau[hh][i] + Dtau[hh][j]) * del_phr;
+          deriv[phr][i] -= dum;
+          deriv[phr][j] += dum;
 
           double del_sAb = agent[sAb][i] - agent[sAb][j];
 

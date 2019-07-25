@@ -10,6 +10,7 @@ box -5.0e4 5.0e4  -5.0e4 5.0e4  -5.0e4 5.0e4 # xlo xhi  ylo yhi  zlo zhi (um)
 
 voxel_size 1.2e3 # um (Note: minimum voxel_size is 100 um in order to include 70 neurons in itself.)
 
+## parameters
 parameters diff_sAb 2.0e7 # um2/day
 parameters kp 7.8e0 # 1/uM . 1/day
 parameters kn 2.1e-3 # 1/uM . 1/day
@@ -18,38 +19,44 @@ parameters df 1.8e-10 # mL/day
 parameters es 1.9 # 1/day
 parameters diff_mic 2.0e4 # um2/day
 parameters sens_s 2.2e3 # um/day per uM/um
-parameters sens_f 2.2e3 # um/day per uM/um
-parameters dna 2.2e-4 # neuronal death rate due to astrogliosis (1/day)
-parameters dnf 2.2e-4 # neuronal death rate due to fibrillization (1/day . 1/uM)
+parameters sens_f 2.2e4 # um/day per uM/um
 parameters Ha 3.0e5 # Michaelis-Menten constant for astrogliosis (uM/mL)
 parameters ka 0.01 # astroglyiosis rate (1/day)
+parameters diff_tau 9.2e6 # um2/day
+parameters ktau 1.0e-8 # tau accumulation rate due to F and N (1/day . 1/uM . 1/mL)
+parameters etau 1.9 # tau discharge (1/day)
+parameters dnt 2.2e-4 # neuronal death rate due to tau accumulation (1/day . 1/uM)
 
-#circadian rhythm parameters
+# circadian rhythm parameters
 # Note: don't set "cir" parameter when you use circadian rhythm
-parameters C_cir 4.0e-11 # neuronal Abeta secretion (mol/day/neuron)
+parameters C_cir 4.0e-10 # neuronal Abeta secretion (uM . mL/day/neuron)
 parameters c_cir 0 # dimensionless amplitude
 parameters tau_cir 1.0 # period (day)
 
 parameters neu 0.0 # 1/mL
 parameters mic 5.0e6 # 1/mL
-parameters sAb 0.0 # uM 
+parameters sAb 0.0 # uM
 parameters fAb 0.0 # uM
 parameters ast 0.0 # astrogliosis
+parameters tau 0.0 # uM
 
-# Note: the voxels and boundaries are set based on the first mri input
+## input mri files
+#read_mri restart restart.nii 0.0 1.0
+#read_mri all mni152_2009bet.nii 0.5 1.0e8
+#read_mri csf csf.nii 0.0 1.0
 read_mri wm ../base/wm.nii 0.3 1.0e7
 read_mri gm ../base/gm.nii 0.25 1.0e8
 read_mri csf ../base/csf.nii 0.1 1.0
 read_mri group ../base/voi.nii 0 0
 
-#balance y 20
+read_mri rgb ../base/rgb.nii 0 255
+
+balance y 20
 
 ## outputs
-dump mri 100 dump. mic neu sAb fAb ast type group
-dump mri 100 dump.type. type
-dump mri 100 dump.group. group
-statistics 100 stat.dat
+dump mri 100000 dump. mic neu sAb fAb ast tau type group
+statistics 100000 stat.dat
 
-log 10
-run 100
+log 10000
+run 5000000
 setup

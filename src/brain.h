@@ -87,8 +87,6 @@ class Brain {
   double init_val[num_agents];
   double **agent, **deriv; // agents and their time derivatives
   double **Dtau, Dtau_max, diff_tau; // diffusion tensor for tau protein
-  double ktau; // tau protein aggregation rate
-  double etau; // rate of tau efflux in CSF
   double dnt; // neuronal death rate due to tau accumulation
   double D_sAb, diff_sAb; // diffusivity of sAb
   double D_mic, diff_mic; // diffusivity of microglia
@@ -96,11 +94,12 @@ class Brain {
   double kp, kn; // rate of polymerization and nucleation
   double ds,df; // clearance rate of sAb and fAb by microglia
   double es; // rate of sAb efflux in CSF
-  double dna; // neuronal death rate due to astogliosis
-  double dnf; // neuronal death rate due to fibrillization
   double Ha; // Michaelis-Menten constant for astrogliosis
   double ka; // rate of astrogliosis
   double C_cir, c_cir, tau_cir, omega_cir; // circadian rhythm parameters
+  double ktau; // rate of tau tangle formation from phosphorylated tau
+  double kphi; // phosphorylation rate of tau proteins due to F and N
+  double ephi; // rate of phosphorylated-tau efflux in CSF
 
   MPI_Comm world;
 

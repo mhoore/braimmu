@@ -300,13 +300,12 @@ int Input::read_parameters(Brain *brn) {
     else if (!(*arg)[c].compare("diff_mic")) brn->diff_mic = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("sens_s")) brn->sens_s = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("sens_f")) brn->sens_f = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("dna")) brn->dna = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("dnf")) brn->dnf = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("Ha")) brn->Ha = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("ka")) brn->ka = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("ktau")) brn->ktau = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("etau")) brn->etau = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("dnt")) brn->dnt = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("ktau")) brn->ktau = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("kphi")) brn->kphi = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("ephi")) brn->ephi = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("C_cir")) {
       brn->C_cir = stof((*arg)[c+1]);
       brn->init_val[cir] = brn->C_cir;
