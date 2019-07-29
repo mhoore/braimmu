@@ -38,12 +38,6 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
     printf("Integration started. \n");
   integrate(Nrun);
 
-  //printf("proc %i: xlo = %g \n", me, xlo);
-  //MPI_Barrier(MPI_COMM_WORLD);
-  //printf("proc %i here3 \n",brn->me);
-  //if (brn->me == 2)
-    //printf("proc %i: unpack itag = %li, c=%i \n",brn->me,itag,c-1);
-
 }
 
 /* ----------------------------------------------------------------------*/
@@ -86,16 +80,16 @@ void Brain::allocations() {
   c_cir = 0.0;
   tau_cir = 1.0;
 
-  memory->create(nv,3,"nv");
-  memory->create(nvl,3,"nvl");
-  memory->create(npart,3,"npart");
+  memory->create(nv,ndim,"nv");
+  memory->create(nvl,ndim,"nvl");
+  memory->create(npart,ndim,"npart");
 
-  memory->create(boxlo,3,"boxlo");
-  memory->create(boxhi,3,"boxhi");
-  memory->create(lbox,3,"lbox");
+  memory->create(boxlo,ndim,"boxlo");
+  memory->create(boxhi,ndim,"boxhi");
+  memory->create(lbox,ndim,"lbox");
 
-  memory->create(xlo,3,"xlo");
-  memory->create(xhi,3,"xhi");
+  memory->create(xlo,ndim,"xlo");
+  memory->create(xhi,ndim,"xhi");
 
   memory = new Memory();
   input = new Input();

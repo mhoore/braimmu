@@ -26,7 +26,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
   // output initial step
   if (!me)
     printf("Writing output for the initial step ... \n");
-//  output->lammpstrj(this);
+  //output->lammpstrj(this);
 
   if (output->do_dump)
     output->dump(this);
@@ -67,6 +67,8 @@ void Brain::allocations() {
   for (int ag_id=0; ag_id<num_agents; ag_id++)
     init_val[ag_id] = -1.0;
 
+  Dtau_max = diff_tau = 0.0;
+  ktau = ephi = kphi = dnt = 0.0;
   D_sAb = diff_sAb = 0.0;
   D_mic = diff_mic = 0.0;
   cs = sens_s = cf = sens_f = 0.0;
@@ -74,16 +76,20 @@ void Brain::allocations() {
   ds = df = 0.0;
   es = 0.0;
 
-  memory->create(nv,3,"nv");
-  memory->create(nvl,3,"nvl");
-  memory->create(npart,3,"npart");
+  C_cir = 1.0;
+  c_cir = 0.0;
+  tau_cir = 1.0;
 
-  memory->create(boxlo,3,"boxlo");
-  memory->create(boxhi,3,"boxhi");
-  memory->create(lbox,3,"lbox");
+  memory->create(nv,ndim,"nv");
+  memory->create(nvl,ndim,"nvl");
+  memory->create(npart,ndim,"npart");
 
-  memory->create(xlo,3,"xlo");
-  memory->create(xhi,3,"xhi");
+  memory->create(boxlo,ndim,"boxlo");
+  memory->create(boxhi,ndim,"boxhi");
+  memory->create(lbox,ndim,"lbox");
+
+  memory->create(xlo,ndim,"xlo");
+  memory->create(xhi,ndim,"xhi");
 
   memory = new Memory();
   input = new Input();

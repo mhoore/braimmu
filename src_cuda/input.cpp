@@ -188,7 +188,7 @@ void Input::execute_command(Brain *brn) {
    * syntax: read_mri keyword file.nii thres_val max_val
    * example: read_mri gm gm.nii 0.1 1.0e9
    * arguments:
-   * keywords: gm, wm, csf, restart, all
+   * keywords: gm, wm, csf, group, restart, all
    * thres_val: threshold value between 0 and 1
    * max_val: maximum number of neurons */
   else if (!command.compare("read_mri")) {
@@ -321,10 +321,19 @@ int Input::read_parameters(Brain *brn) {
     else if (!(*arg)[c].compare("diff_mic")) brn->diff_mic = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("sens_s")) brn->sens_s = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("sens_f")) brn->sens_f = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("dna")) brn->dna = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("dnf")) brn->dnf = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("Ha")) brn->Ha = stof((*arg)[c+1]);
     else if (!(*arg)[c].compare("ka")) brn->ka = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("dnt")) brn->dnt = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("ktau")) brn->ktau = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("kphi")) brn->kphi = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("ephi")) brn->ephi = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("C_cir")) {
+      brn->C_cir = stof((*arg)[c+1]);
+      brn->init_val[cir] = brn->C_cir;
+    }
+    else if (!(*arg)[c].compare("c_cir")) brn->c_cir = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("tau_cir")) brn->tau_cir = stof((*arg)[c+1]);
+    else if (!(*arg)[c].compare("diff_tau")) brn->diff_tau = stof((*arg)[c+1]);
     else if (find_agent((*arg)[c]) >= 0) brn->init_val[find_agent((*arg)[c])] = stof((*arg)[c+1]);
     else return 0;
 

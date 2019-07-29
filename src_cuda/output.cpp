@@ -46,11 +46,12 @@ void Output::lammpstrj(Brain *brn) {
 
   tagint *tag = brn->tag;
   auto &type = brn->type;
+  auto &group = brn->group;
 
   double **x = brn->x;
   auto &agent = brn->agent;
 
-  int dsize = num_agents + 5; // NOTE: the number of data packed to the buffer
+  int dsize = num_agents + 6; // NOTE: the number of data packed to the buffer
   create(send_buf,nlocal*dsize,"send_buf");
 
   // pack
@@ -61,6 +62,7 @@ void Output::lammpstrj(Brain *brn) {
         int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
         send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(group[i]).d;
 
         send_buf[c++] = x[i][0];
         send_buf[c++] = x[i][1];
@@ -112,7 +114,9 @@ void Output::lammpstrj(Brain *brn) {
     tagint c = 0;
     for (int i=0; i<nvoxel; i++) {
       fprintf(fw,TAGINT_FORMAT " ", (tagint) ubuf(recv_buf[c++]).i); // tag
-      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+      c++;
+      //fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
       fprintf(fw,"%g ", recv_buf[c++]); // x
       fprintf(fw,"%g ", recv_buf[c++]); // y
       fprintf(fw,"%g ", recv_buf[c++]); // z
@@ -150,12 +154,13 @@ void Output::restart(Brain *brn) {
 
   tagint *tag = brn->tag;
   auto &type = brn->type;
+  auto &group = brn->group;
 
   int *nvl = brn->nvl;
 
   auto &agent = brn->agent;
 
-  int dsize = num_agents + 2;
+  int dsize = num_agents + 3;
   create(send_buf,nlocal*dsize,"send_buf");
 
   // pack
@@ -166,6 +171,7 @@ void Output::restart(Brain *brn) {
         int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
         send_buf[c++] = ubuf(type[i]).d;
+        send_buf[c++] = ubuf(group[i]).d;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           send_buf[c++] = agent[ag_id][i];
@@ -220,6 +226,9 @@ void Output::restart(Brain *brn) {
       fb.write((char *)&buft,sizeof(buft));
 
       bufi = (int) ubuf(recv_buf[c++]).i; // type
+      fb.write((char *)&bufi,sizeof(bufi));
+
+      bufi = (int) ubuf(recv_buf[c++]).i; // group
       fb.write((char *)&bufi,sizeof(bufi));
 
       for (int ag_id=0; ag_id<num_agents; ag_id++) {
@@ -502,6 +511,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
 
   double **x = brn->x;
   auto &type = brn->type;
+  auto &group = brn->group;
 
   int *nvl = brn->nvl;
 
@@ -511,6 +521,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   tagint c = 3;
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
+      dsize++;
+    else if (!arg[c].compare("group"))
       dsize++;
     else if (brn->input->find_agent(arg[c]) >= 0)
       dsize++;
@@ -538,6 +550,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
           int ag_id = brn->input->find_agent(arg[aid]);
           if (!arg[aid].compare("type"))
             send_buf[c++] = ubuf(type[i]).d;
+          else if (!arg[aid].compare("group"))
+            send_buf[c++] = ubuf(group[i]).d;
           else if (ag_id >= 0)
             send_buf[c++] = agent[ag_id][i];
           aid++;
@@ -591,6 +605,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
       int ag_id = brn->input->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
         fprintf(fw,"type ");
+      else if (!arg[aid].compare("group"))
+        fprintf(fw,"group ");
       else if (ag_id >= 0)
         fprintf(fw,"%s ", ag_str[ag_id].c_str());
       aid++;
@@ -608,6 +624,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
         int ag_id = brn->input->find_agent(arg[aid]);
         if (!arg[aid].compare("type"))
           fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
+        else if (!arg[aid].compare("group"))
+          fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
         else if (ag_id >= 0)
           fprintf(fw,"%g ", recv_buf[c++]); // agent
         aid++;
@@ -642,16 +660,28 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
   double **x = brn->x;
   auto &type = brn->type;
+  auto &group = brn->group;
 
   int *nvl = brn->nvl;
 
   auto &agent = brn->agent;
+
+  auto &Dtau = brn->Dtau;
 
   int dsize = 3;
   tagint c = 3;
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
       dsize++;
+    else if (!arg[c].compare("group"))
+      dsize++;
+    else if (!arg[c].compare("rgb")) {
+      if (c != arg.size() - 1) {
+        printf("Error: dump_mri: rgb keyword should be the last. \n");
+        exit(1);
+      }
+      dsize += 3;
+    }
     else if (!arg[c].compare("me"))
       dsize++;
     else if (brn->input->find_agent(arg[c]) >= 0)
@@ -680,6 +710,13 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
           int ag_id = brn->input->find_agent(arg[aid]);
           if (!arg[aid].compare("type"))
             send_buf[c++] = ubuf(type[i]).d;
+          else if (!arg[aid].compare("group"))
+            send_buf[c++] = ubuf(group[i]).d;
+          else if (!arg[aid].compare("rgb")) {
+            send_buf[c++] = Dtau[0][i];
+            send_buf[c++] = Dtau[1][i];
+            send_buf[c++] = Dtau[2][i];
+          }
           else if (!arg[aid].compare("me"))
             send_buf[c++] = ubuf(me).d;
           else if (ag_id >= 0)
@@ -744,6 +781,15 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
         if (!arg[aid].compare("type"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
+        else if (!arg[aid].compare("group"))
+          data[cnim] = (float) ubuf(recv_buf[c++]).i;
+        else if (!arg[aid].compare("rgb")) {
+          data[cnim] = (float) recv_buf[c++];
+          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-2) ) );
+          data[cnim] = (float) recv_buf[c++];
+          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-1) ) );
+          data[cnim] = (float) recv_buf[c++];
+        }
         else if (!arg[aid].compare("me"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (ag_id >= 0)
@@ -849,7 +895,7 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
   nim->intent_code = intent; // NIFTI_INTENT_VECTOR;
 
   nim->datatype = DT_FLOAT32;
-  nim->nbyper = 16;
+  nim->nbyper = 4;
 
   nim->slice_start = 0;
   nim->pixdim[0] = 1;

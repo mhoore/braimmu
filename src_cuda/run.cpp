@@ -68,32 +68,50 @@ void Brain::derivatives() {
         int i = find_id(ii,jj,kk);
         if (type[i] == EMP_type) continue;
 
-        double dum = kp * agent[sAb][i] * agent[fAb][i]
-                   + kn * agent[sAb][i] * agent[sAb][i];
+        // direct function or time derivatives
 
-        // sAb
-        deriv[sAb][i] += agent[neu][i] * agent[cir][i]
-                          - dum
-                          - ds * agent[mic][i] * agent[sAb][i];
-        // fAb
-        deriv[fAb][i] += dum
-                          - df * agent[mic][i] * agent[fAb][i];
-
-        // sAb & fAb efflux from CSF
+        // sAb, fAb, and tau efflux from CSF
         if (type[i] == CSF_type) {
           deriv[sAb][i] -= es * agent[sAb][i];
           deriv[fAb][i] -= es * agent[fAb][i];
+          deriv[phr][i] -= ephi * agent[phr][i];
+        }
+        // in parenchyma (WM and GM)
+        else {
+          double dum = kp * agent[sAb][i] * agent[fAb][i]
+                     + kn * agent[sAb][i] * agent[sAb][i];
+
+          // sAb
+          deriv[sAb][i] += agent[neu][i] * agent[cir][i]
+                            - dum
+                            - ds * agent[mic][i] * agent[sAb][i];
+          // fAb
+          deriv[fAb][i] += dum
+                           - df * agent[mic][i] * agent[fAb][i];
+
+          dum = ktau * agent[phr][i];
+
+          // tau protein phosphorylation due to fAb and neu
+          deriv[phr][i] += kphi * agent[fAb][i] * agent[neu][i]
+                         - dum;
+
+          // tau tangle formation from phosphorylated tau
+          deriv[tau][i] += dum;
+
+          // neuronal death due to tau aggregation
+          deriv[neu][i] -= dnt * agent[tau][i] * agent[neu][i];
+
+          // astrogliosis
+          dum = agent[fAb][i] * agent[mic][i];
+          deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+
+          // circadian rhythm
+          if (c_cir > 0)
+            deriv[cir][i] = - C_cir * c_cir * omega_cir
+                            * sin(omega_cir * dt * step);
         }
 
-        // neuronal death due to astrogliosis
-        deriv[neu][i] -= (dna * agent[ast][i]
-                           + dnf * agent[fAb][i]) * agent[neu][i];
-
-        // astrogliosis
-        dum = agent[fAb][i] * agent[mic][i];
-        deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
-
-        /// fluxes
+        // spatial derivatives: fluxes
         int n_ngh, ngh[6];
         ngh[0] = find_id(ii+1,jj,kk);
         ngh[1] = find_id(ii,jj+1,kk);
@@ -112,10 +130,18 @@ void Brain::derivatives() {
 
           if (type[j] == EMP_type) continue;
 
+          double del_phr = agent[phr][i] - agent[phr][j];
+
+          // diffusion of tau
+          double dum = 0.5 * (Dtau[c][i] + Dtau[c][j]) * del_phr;
+          deriv[phr][i] -= dum;
+          if (newton_flux)
+            deriv[phr][j] += dum;
+
           double del_sAb = agent[sAb][i] - agent[sAb][j];
 
           // diffusion of sAb
-          double dum = D_sAb * del_sAb;
+          dum = D_sAb * del_sAb;
           deriv[sAb][i] -= dum;
           if (newton_flux)
             deriv[sAb][j] += dum;
@@ -183,3 +209,18 @@ void Brain::update() {
 int Brain::find_id(int i, int j, int k) {
   return i + (nvl[0] + 2) * (j + (nvl[1] + 2) * k);
 }
+
+/*    ////////DEBUG/////////////////////
+    FILE* fw;
+    fw = fopen("out.txt","a");
+    for (int i=0; i<nall; i++) {
+      fprintf(fw,"proc%i: %i %i %g %g %g ",
+              me, step, i, x[i][0], x[i][1], x[i][2]);
+      for (int ag_id=0; ag_id<num_agents; ag_id++)
+        fprintf(fw,"%s %g %g ",
+                ag_str[ag_id].c_str(), agent[ag_id][i][0], agent[ag_id][i][1]);
+      fprintf(fw,"\n");
+    }
+    fclose(fw);
+    ////////DEBUG/////////////////////
+*/

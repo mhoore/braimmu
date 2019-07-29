@@ -427,13 +427,13 @@ void Init::allocations(Brain *brn, int allocated) {
   create(brn->group,brn->nall,"group");
   create(brn->is_loc,brn->nall,"is_loc");
 
-  create(brn->x,brn->nall,3,"x");
+  create(brn->x,brn->nall,ndim,"x");
   create(brn->tag,brn->nall,"tag");
 
   create(brn->agent,num_agents,brn->nall,"agent");
   create(brn->deriv,num_agents,brn->nall,"deriv");
 
-  create(brn->Dtau,3,brn->nall,"Dtau");
+  create(brn->Dtau,ndim,brn->nall,"Dtau");
 
   if (!allocated)
     create(map,brn->nvoxel,"map");
@@ -790,6 +790,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
+
           else if (v_prop[i] < thres_val) {
             type[i] = CSF_type;
             for (int ag_id=0; ag_id<num_agents; ag_id++)

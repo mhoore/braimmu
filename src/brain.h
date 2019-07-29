@@ -50,9 +50,6 @@ class Brain {
 
   friend class Input;
 
-  //Run *run;
-  //Output *output;
-
   int *npart;
   int *nv, *nvl; // number of voxels in each dimension, global and local
   tagint nvoxel; // total number of voxels
@@ -70,8 +67,6 @@ class Brain {
 
   int *type, *group;
   bool *is_loc; // local voxel = 1, ghost voxel = 0
-
-  //int nbondlist, **bondlist;
 
   tagint *tag; // tag of each voxel
 

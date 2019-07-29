@@ -47,6 +47,7 @@ private:
   int32_t *ptr32;
   float *ptrf;
   double *ptrd;
+  uint8_t *ptr_rgb;
 
   int *map; // map from voxel global id to local id
 

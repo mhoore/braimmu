@@ -32,10 +32,10 @@ class Brain {
   void allocations();
   void destroy();
 
+  // run functions
   void integrate(int);
   void update();
   void derivatives();
-
   int find_id(int, int, int);
 
   // classes
@@ -68,8 +68,6 @@ class Brain {
   std::vector<int> type, group;
   std::vector<bool> is_loc; // local voxel = 1, ghost voxel = 0
 
-  //int nbondlist, **bondlist;
-
   tagint *tag; // tag of each voxel
 
   int num_neigh_max, num_conn_max; // maximum number of neighbors/connections
@@ -83,19 +81,23 @@ class Brain {
   bool newton_flux;
 
   /// model parameters
-  std::array<std::vector<double>, num_agents> agent, deriv;
   double init_val[num_agents];
+  std::array<std::vector<double>, num_agents> agent, deriv;
+  std::array<std::vector<double>, ndim> Dtau; // diffusion tensor for tau protein
+  double Dtau_max, diff_tau; // maximum diffusion of tau protein
+  double dnt; // neuronal death rate due to tau accumulation
   double D_sAb, diff_sAb; // diffusivity of sAb
   double D_mic, diff_mic; // diffusivity of microglia
   double cs, sens_s, cf, sens_f; // microglia chemotaxis sensitivity
   double kp, kn; // rate of polymerization and nucleation
   double ds,df; // clearance rate of sAb and fAb by microglia
   double es; // rate of sAb efflux in CSF
-  double c_mic, vel_mic; // velocity of microglia (speed of chemotaxis)
-  double dna; // neuronal death rate due to astogliosis
-  double dnf; // neuronal death rate due to fibrillization
   double Ha; // Michaelis-Menten constant for astrogliosis
   double ka; // rate of astrogliosis
+  double C_cir, c_cir, tau_cir, omega_cir; // circadian rhythm parameters
+  double ktau; // rate of tau tangle formation from phosphorylated tau
+  double kphi; // phosphorylation rate of tau proteins due to F and N
+  double ephi; // rate of phosphorylated-tau efflux in CSF
 
   MPI_Comm world;
 

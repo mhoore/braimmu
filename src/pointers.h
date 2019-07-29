@@ -41,6 +41,7 @@ const int CSF_type = 0; // Cerebrospinal fluid type
 const int WM_type = 1; // White matter parenchyma type
 const int GM_type = 2; // Gray matter parenchyma type
 
+const int ndim = 3; // number of dimensions (3D)
 }
 
 #endif
