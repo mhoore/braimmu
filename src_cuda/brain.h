@@ -16,7 +16,6 @@
 
 #include "pointers.h"
 #include "input.h"
-#include "memory.h"
 #include "init.h"
 #include "comm.h"
 #include "output.h"
@@ -30,7 +29,6 @@ class Brain {
   ~Brain();
 
   void allocations();
-  void destroy();
 
   // run functions
   void integrate(int);
@@ -40,7 +38,6 @@ class Brain {
 
   // classes
   Input *input;
-  Memory *memory;
   Init *init;
   Comm *comm;
   Output *output;
@@ -50,8 +47,8 @@ class Brain {
 
   friend class Input;
 
-  int *npart;
-  int *nv, *nvl; // number of voxels in each dimension, global and local
+  array<int, ndim> npart; // number of partitions in each dimension
+  array<int, ndim> nv,nvl; // number of voxels in each dimension, global and local
   tagint nvoxel; // total number of voxels
   int nlocal, nghost, nall; // number of voxels for each core, local/ghost/all
 
@@ -59,21 +56,20 @@ class Brain {
 
   double dt;  // timestep
   int nevery; // period of neural activity = nevery timesteps
-  double *boxlo,*boxhi,*lbox; // box boundaries, and size
-  double *xlo,*xhi; // boundaries for each partition
+  array<double, ndim> boxlo,boxhi,lbox; // box boundaries, and size
+  array<double, ndim> xlo, xhi; // boundaries for each partition
 
-  double **x; // voxel position
+  array<vector<double>, ndim> x;
+
   double vlen, vlen_1, vlen_2, vvol, vvol_1; // voxel size
 
-  std::vector<int> type, group;
-  std::vector<bool> is_loc; // local voxel = 1, ghost voxel = 0
+  vector<int> type, group;
+  vector<bool> is_loc; // local voxel = 1, ghost voxel = 0
 
-  tagint *tag; // tag of each voxel
+  vector<tagint> tag; // tag of each voxel
 
-  int num_neigh_max, num_conn_max; // maximum number of neighbors/connections
-  int *num_neigh, *num_conn; // number of neighbors, number of long-range connections
-  int **neigh; // neighbor ids for each voxel
-  tagint **conn; // connection tags for each voxel
+  int num_conn_max; // maximum number of connections
+  //tagint **conn; // connection tags for each voxel
 
   /// MRI image variables
   nifti_image *nim;
@@ -82,8 +78,8 @@ class Brain {
 
   /// model parameters
   double init_val[num_agents];
-  std::array<std::vector<double>, num_agents> agent, deriv;
-  std::array<std::vector<double>, ndim> Dtau; // diffusion tensor for tau protein
+  array<vector<double>, num_agents> agent, deriv;
+  array<vector<double>, ndim> Dtau; // diffusion tensor for tau protein
   double Dtau_max, diff_tau; // maximum diffusion of tau protein
   double dnt; // neuronal death rate due to tau accumulation
   double D_sAb, diff_sAb; // diffusivity of sAb

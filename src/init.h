@@ -26,6 +26,7 @@ class Init : public Memory {
 
   void setup(class Brain*);
   void read_mri(class Brain*);
+  void print_mri_properties(class Brain*, nifti_image*, string);
   void boundaries(class Brain*);
   void voxels(class Brain*, int);
   void neighbor(class Brain*);

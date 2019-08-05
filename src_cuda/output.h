@@ -20,7 +20,7 @@
 using namespace std;
 namespace brain_NS {
 
-class Output : public Memory {
+class Output {
  public:
   Output();
   ~Output();

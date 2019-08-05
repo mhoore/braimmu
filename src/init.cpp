@@ -116,32 +116,70 @@ void Init::read_mri(Brain *brn) {
       exit(1);
     }
 
-    if (!brn->me) {
-      printf("##################### \n");
-      printf("NIFTI image %s is read. \n", mri_arg[i][1].c_str());
-      printf("NIFTI image properties: ");
-      printf("ndim = %i \n", nim_tmp->ndim);
-      for (int i=1; i<8; i++)
-        printf("dim[%i] = %i, pixdim[i] = %g \n",
-               i,nim_tmp->dim[i],i,nim_tmp->pixdim[i]);
-      printf("nvox = %lli \n", nim_tmp->nvox);
-      printf("nbyper = %i \n", nim_tmp->nbyper);
-      printf("datatype = %i \n", nim_tmp->datatype);
-
-      printf("calmin = %g, calmax = %g \n", nim_tmp->cal_min, nim_tmp->cal_max);
-      printf("toffset = %g \n", nim_tmp->toffset);
-
-      printf("xyz_units = %i, time_units = %i \n", nim_tmp->xyz_units, nim_tmp->time_units);
-      printf("nifti_type = %i \n", nim_tmp->nifti_type);
-
-      printf("intent_code = %i \n", nim_tmp->intent_code);
-
-      printf("description: %s \n", nim_tmp->descrip);
-      printf("##################### \n");
-    }
+    if (!brn->me)
+      print_mri_properties(brn,nim_tmp,mri_arg[i][1]);
 
     nifti_image_free(nim_tmp);
   }
+
+}
+
+/* ----------------------------------------------------------------------
+ * Print important properties of MRI data file
+ * ----------------------------------------------------------------------*/
+void Init::print_mri_properties(Brain *brn, nifti_image *nim, string fname) {
+  ofstream logfile;
+  logfile.open (flog, ios::app);
+
+  char buf[256];
+  sprintf(buf,"##################### ");
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"Reading NIFTI image %s: ", fname.c_str());
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"ndim = %i ", nim->ndim);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  for (int i=1; i<nim->ndim; i++) {
+    sprintf(buf,"dim[%i] = %i, pixdim[i] = %g ",
+           i,nim->dim[i],i,nim->pixdim[i]);
+    cout << buf << endl;
+    logfile << buf << endl;
+  }
+
+  sprintf(buf,"nvox = %lli ", nim->nvox);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"nbyper = %i ", nim->nbyper);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"datatype = %i ", nim->datatype);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"xyz_units = %i, time_units = %i ", nim->xyz_units, nim->time_units);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"nifti_type = %i ", nim->nifti_type);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"description: %s ", nim->descrip);
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  sprintf(buf,"##################### ");
+  cout << buf << endl;
+  logfile << buf << endl;
+
+  logfile.close();
 
 }
 
@@ -844,11 +882,9 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
          * setup diffusion tensor from RGB file
          * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("rgb")) {
-          if (rgb_prop[i][0] > thres_val) {
-            Dtau[0][i] = (rgb_prop[i][0] - thres_val) * coef_rgb * brn->Dtau_max;
-            Dtau[1][i] = (rgb_prop[i][1] - thres_val) * coef_rgb * brn->Dtau_max;
-            Dtau[2][i] = (rgb_prop[i][2] - thres_val) * coef_rgb * brn->Dtau_max;
-          }
+          for (int j=0; j<3; j++)
+            if (rgb_prop[i][j] > thres_val)
+              Dtau[j][i] = (rgb_prop[i][j] - thres_val) * coef_rgb * brn->Dtau_max;
         }
 
       }

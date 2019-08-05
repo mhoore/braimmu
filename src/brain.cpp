@@ -19,8 +19,13 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
 
   allocations();
 
-  if (!me)
+  if (!me) {
     printf("Reading input, setup the system ... \n");
+    ofstream logfile;
+    logfile.open (flog, ios::trunc);
+    logfile << "*** LOG FILE ***" << endl;
+    logfile.close();
+  }
   input->file(arg[1], this);
 
   // output initial step

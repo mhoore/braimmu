@@ -29,10 +29,6 @@ Output::~Output() {
 
 /* ----------------------------------------------------------------------*/
 void Output::lammpstrj(Brain *brn) {
-  int *rcounts = NULL;
-  int *displs = NULL;
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -42,17 +38,19 @@ void Output::lammpstrj(Brain *brn) {
   int nlocal = brn->nlocal;
   tagint nvoxel = brn->nvoxel;
 
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
-  tagint *tag = brn->tag;
+  auto &tag = brn->tag;
   auto &type = brn->type;
   auto &group = brn->group;
 
-  double **x = brn->x;
+  auto &x = brn->x;
+
   auto &agent = brn->agent;
 
   int dsize = num_agents + 6; // NOTE: the number of data packed to the buffer
-  create(send_buf,nlocal*dsize,"send_buf");
+  vector<int> rcounts(nproc), displs(nproc);
+  vector<double> send_buf(nlocal*dsize), recv_buf(nvoxel*dsize);
 
   // pack
   tagint c = 0;
@@ -64,19 +62,15 @@ void Output::lammpstrj(Brain *brn) {
         send_buf[c++] = ubuf(type[i]).d;
         send_buf[c++] = ubuf(group[i]).d;
 
-        send_buf[c++] = x[i][0];
-        send_buf[c++] = x[i][1];
-        send_buf[c++] = x[i][2];
+        send_buf[c++] = x[0][i];
+        send_buf[c++] = x[1][i];
+        send_buf[c++] = x[2][i];
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           send_buf[c++] = agent[ag_id][i];
       }
 
-  create(rcounts,nproc,"rcounts");
-  create(displs,nproc,"displs");
-  create(recv_buf,nvoxel*dsize,"recv_buf");
-
-  MPI_Gather(&nlocal,1,MPI_INT,rcounts,1,MPI_INT,0,world);
+  MPI_Gather(&nlocal,1,MPI_INT,&rcounts[0],1,MPI_INT,0,world);
 
   if (!me) {
     int offset = 0;
@@ -87,9 +81,8 @@ void Output::lammpstrj(Brain *brn) {
     }
   }
 
-  MPI_Gatherv(send_buf,nlocal*dsize,MPI_DOUBLE,recv_buf,rcounts,displs,MPI_DOUBLE,0,world);
-
-  destroy(send_buf);
+  MPI_Gatherv(&send_buf[0],nlocal*dsize,MPI_DOUBLE,
+              &recv_buf[0],&rcounts[0],&displs[0],MPI_DOUBLE,0,world);
 
   // unpack and print
   if (!me) {
@@ -129,20 +122,11 @@ void Output::lammpstrj(Brain *brn) {
 
   }
 
-  destroy(rcounts);
-  destroy(displs);
-  destroy(recv_buf);
-
 }
 
 /* ----------------------------------------------------------------------*/
 void Output::restart(Brain *brn) {
   if (brn->step % revery != 0) return;
-
-  int *rcounts = NULL;
-  int *displs = NULL;
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -152,16 +136,21 @@ void Output::restart(Brain *brn) {
   int nlocal = brn->nlocal;
   tagint nvoxel = brn->nvoxel;
 
-  tagint *tag = brn->tag;
+  auto &tag = brn->tag;
   auto &type = brn->type;
   auto &group = brn->group;
 
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   auto &agent = brn->agent;
 
   int dsize = num_agents + 3;
-  create(send_buf,nlocal*dsize,"send_buf");
+
+  vector<int> rcounts, displs;
+  vector<double> send_buf, recv_buf;
+
+  send_buf.clear();
+  send_buf.resize(nlocal*dsize);
 
   // pack
   tagint c = 0;
@@ -178,12 +167,16 @@ void Output::restart(Brain *brn) {
       }
 
   if (!me) {
-    create(rcounts,nproc,"rcounts");
-    create(displs,nproc,"displs");
-    create(recv_buf,nvoxel*dsize,"recv_buf");
+    rcounts.clear();
+    displs.clear();
+    recv_buf.clear();
+
+    rcounts.resize(nproc);
+    displs.resize(nproc);
+    recv_buf.resize(nvoxel*dsize);
   }
 
-  MPI_Gather(&nlocal,1,MPI_INT,rcounts,1,MPI_INT,0,world);
+  MPI_Gather(&nlocal,1,MPI_INT,&rcounts[0],1,MPI_INT,0,world);
 
   if (!me) {
     int offset = 0;
@@ -194,9 +187,8 @@ void Output::restart(Brain *brn) {
     }
   }
 
-  MPI_Gatherv(send_buf,nlocal*dsize,MPI_DOUBLE,recv_buf,rcounts,displs,MPI_DOUBLE,0,world);
-
-  destroy(send_buf);
+  MPI_Gatherv(&send_buf[0],nlocal*dsize,MPI_DOUBLE,
+              &recv_buf[0],&rcounts[0],&displs[0],MPI_DOUBLE,0,world);
 
   // unpack and print
   if (!me) {
@@ -257,10 +249,6 @@ void Output::restart(Brain *brn) {
     //}
     //fb.close();
     //fclose(fw);
-
-    destroy(rcounts);
-    destroy(displs);
-    destroy(recv_buf);
   }
 
 }
@@ -268,9 +256,6 @@ void Output::restart(Brain *brn) {
 /* ----------------------------------------------------------------------*/
 void Output::statistics(Brain *brn) {
   if (brn->step % severy != 0) return;
-
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -280,21 +265,18 @@ void Output::statistics(Brain *brn) {
 
   auto &type = brn->type;
 
-  int *nvl = brn->nvl;
-
-  double **agent_val;
-  tagint *agent_num;
+  auto &nvl = brn->nvl;
 
   int nr = 2; // number of regions: parenchyma and CSF
 
-  create(agent_val,num_agents,nr,"agent_val");
-  create(agent_num,nr,"agent_num");
+  vector<vector<double>> agent_val(num_agents);
+  for (auto &a: agent_val) {
+    a.clear();
+    a.resize(nr);
+    fill(a.begin(), a.end(), 0.0);
+  }
 
-  for (int ag_id=0; ag_id<num_agents; ag_id++)
-    for (int i=0; i<nr; i++) {
-      agent_val[ag_id][i] = 0.0;
-      agent_num[i] = 0;
-    }
+  vector<tagint> agent_num(nr,0);
 
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
@@ -315,7 +297,7 @@ void Output::statistics(Brain *brn) {
       }
 
   int size = nr*(num_agents+1);
-  create(send_buf,size,"send_buf");
+  vector<double> send_buf(size);
 
   // pack
   tagint c = 0;
@@ -325,12 +307,9 @@ void Output::statistics(Brain *brn) {
       send_buf[c++] = agent_val[ag_id][i];
   }
 
-  if (!me)
-    create(recv_buf,size,"recv_buf");
+  vector<double> recv_buf(size);
 
-  MPI_Reduce(send_buf,recv_buf,size,MPI_DOUBLE,MPI_SUM,0,world);
-
-  destroy(send_buf);
+  MPI_Reduce(&send_buf[0],&recv_buf[0],size,MPI_DOUBLE,MPI_SUM,0,world);
 
   if (!me) {
     // unpack
@@ -360,20 +339,13 @@ void Output::statistics(Brain *brn) {
 
     fclose(fw);
 
-    destroy(recv_buf);
   }
-
-  destroy(agent_val);
-  destroy(agent_num);
 
 }
 
 /* ----------------------------------------------------------------------*/
 void Output::statistics_sphere(Brain *brn) {
   if (brn->step % severy != 0) return;
-
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -382,33 +354,30 @@ void Output::statistics_sphere(Brain *brn) {
   double vlen = brn->vlen;
   double vlen_1 = brn->vlen_1;
 
-  double **x = brn->x;
+  auto &x = brn->x;
   auto &agent = brn->agent;
 
-  int *nvl = brn->nvl;
-
-  double **agent_val;
-  tagint *agent_num;
+  auto &nvl = brn->nvl;
 
   tagint nr = (tagint)( brn->lbox[0] * vlen_1 / 2 );
 
-  create(agent_val,num_agents,nr,"agent_val");
-  create(agent_num,nr,"agent_num");
+  vector<vector<double>> agent_val(num_agents);
+  for (auto &a: agent_val) {
+    a.clear();
+    a.resize(nr);
+    fill(a.begin(), a.end(), 0.0);
+  }
 
-  for (int ag_id=0; ag_id<num_agents; ag_id++)
-    for (int i=0; i<nr; i++) {
-      agent_val[ag_id][i] = 0.0;
-      agent_num[i] = 0;
-    }
+  vector<tagint> agent_num(nr,0);
 
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = brn->find_id(ii,jj,kk);
-        int c = (tagint) (vlen_1 * sqrt(x[i][0] * x[i][0]
-                                      + x[i][1] * x[i][1]
-                                      + x[i][2] * x[i][2]));
-        //c = (tagint) (vlen_1 * (x[i][0] - brn->boxlo[0]));
+        int c = (tagint) (vlen_1 * sqrt(x[0][i] * x[0][i]
+                                      + x[1][i] * x[1][i]
+                                      + x[2][i] * x[2][i]));
+        //c = (tagint) (vlen_1 * (x[0][i] - brn->boxlo[0]));
         if (c >= nr) continue;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -417,7 +386,7 @@ void Output::statistics_sphere(Brain *brn) {
       }
 
   int size = nr*(num_agents+1);
-  create(send_buf,size,"send_buf");
+  vector<double> send_buf(size);
 
   // pack
   tagint c = 0;
@@ -427,12 +396,9 @@ void Output::statistics_sphere(Brain *brn) {
       send_buf[c++] = agent_val[ag_id][i];
   }
 
-  if (!me)
-    create(recv_buf,size,"recv_buf");
+  vector<double> recv_buf(size);
 
-  MPI_Reduce(send_buf,recv_buf,size,MPI_DOUBLE,MPI_SUM,0,world);
-
-  destroy(send_buf);
+  MPI_Reduce(&send_buf[0],&recv_buf[0],size,MPI_DOUBLE,MPI_SUM,0,world);
 
   if (!me) {
     // unpack
@@ -467,11 +433,7 @@ void Output::statistics_sphere(Brain *brn) {
 
     fclose(fw);
 
-    destroy(recv_buf);
   }
-
-  destroy(agent_val);
-  destroy(agent_num);
 
 }
 
@@ -496,10 +458,6 @@ void Output::dump(Brain *brn) {
 
 /* ----------------------------------------------------------------------*/
 void Output::dump_txt(Brain *brn, vector<string> arg) {
-  int *rcounts = NULL;
-  int *displs = NULL;
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -509,11 +467,11 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   int nlocal = brn->nlocal;
   tagint nvoxel = brn->nvoxel;
 
-  double **x = brn->x;
+  auto &x = brn->x;
   auto &type = brn->type;
   auto &group = brn->group;
 
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   auto &agent = brn->agent;
 
@@ -533,7 +491,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
     c++;
   }
 
-  create(send_buf,nlocal*dsize,"send_buf");
+  vector<int> rcounts(nproc), displs(nproc);
+  vector<double> send_buf(nlocal*dsize), recv_buf(nvoxel*dsize);
 
   // pack
   c = 0;
@@ -541,9 +500,9 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = brn->find_id(ii,jj,kk);
-        send_buf[c++] = x[i][0]; // x
-        send_buf[c++] = x[i][1]; // y
-        send_buf[c++] = x[i][2]; // z
+        send_buf[c++] = x[0][i]; // x
+        send_buf[c++] = x[1][i]; // y
+        send_buf[c++] = x[2][i]; // z
 
         int aid = 3;
         while (aid < arg.size()) {
@@ -558,13 +517,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
         }
       }
 
-  if (!me) {
-    create(rcounts,nproc,"rcounts");
-    create(displs,nproc,"displs");
-    create(recv_buf,nvoxel*dsize,"recv_buf");
-  }
-
-  MPI_Gather(&nlocal,1,MPI_INT,rcounts,1,MPI_INT,0,world);
+  MPI_Gather(&nlocal,1,MPI_INT,&rcounts[0],1,MPI_INT,0,world);
 
   if (!me) {
     int offset = 0;
@@ -575,9 +528,8 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
     }
   }
 
-  MPI_Gatherv(send_buf,nlocal*dsize,MPI_DOUBLE,recv_buf,rcounts,displs,MPI_DOUBLE,0,world);
-
-  destroy(send_buf);
+  MPI_Gatherv(&send_buf[0],nlocal*dsize,MPI_DOUBLE,
+              &recv_buf[0],&rcounts[0],&displs[0],MPI_DOUBLE,0,world);
 
   // unpack and print on the root
   if (!me) {
@@ -636,19 +588,12 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
 
     fclose(fw);
 
-    destroy(rcounts);
-    destroy(displs);
-    destroy(recv_buf);
   }
 
 }
 
 /* ----------------------------------------------------------------------*/
 void Output::dump_mri(Brain *brn, vector<string> arg) {
-  int *rcounts = NULL;
-  int *displs = NULL;
-  double *send_buf = NULL;
-  double *recv_buf = NULL;
 
   MPI_Comm world = brn->world;
 
@@ -658,11 +603,11 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   int nlocal = brn->nlocal;
   tagint nvoxel = brn->nvoxel;
 
-  double **x = brn->x;
+  auto &x = brn->x;
   auto &type = brn->type;
   auto &group = brn->group;
 
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   auto &agent = brn->agent;
 
@@ -693,7 +638,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
     c++;
   }
 
-  create(send_buf,nlocal*dsize,"send_buf");
+  vector<int> rcounts(nproc), displs(nproc);
+  vector<double> send_buf(nlocal*dsize), recv_buf(nvoxel*dsize);
 
   // pack
   c = 0;
@@ -701,9 +647,9 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = brn->find_id(ii,jj,kk);
-        send_buf[c++] = x[i][0]; // x
-        send_buf[c++] = x[i][1]; // y
-        send_buf[c++] = x[i][2]; // z
+        send_buf[c++] = x[0][i]; // x
+        send_buf[c++] = x[1][i]; // y
+        send_buf[c++] = x[2][i]; // z
 
         int aid = 3;
         while (aid < arg.size()) {
@@ -725,13 +671,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
         }
       }
 
-  if (!me) {
-    create(rcounts,nproc,"rcounts");
-    create(displs,nproc,"displs");
-    create(recv_buf,nvoxel*dsize,"recv_buf");
-  }
-
-  MPI_Gather(&nlocal,1,MPI_INT,rcounts,1,MPI_INT,0,world);
+  MPI_Gather(&nlocal,1,MPI_INT,&rcounts[0],1,MPI_INT,0,world);
 
   if (!me) {
     int offset = 0;
@@ -742,9 +682,8 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
     }
   }
 
-  MPI_Gatherv(send_buf,nlocal*dsize,MPI_DOUBLE,recv_buf,rcounts,displs,MPI_DOUBLE,0,world);
-
-  destroy(send_buf);
+  MPI_Gatherv(&send_buf[0],nlocal*dsize,MPI_DOUBLE,
+              &recv_buf[0],&rcounts[0],&displs[0],MPI_DOUBLE,0,world);
 
   // unpack and print on the root
   if (!me) {
@@ -760,7 +699,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
     float* data = (float*) nim->data;
 
-    double *boxlo = brn->boxlo;
+    auto &boxlo = brn->boxlo;
     double vlen_1 = brn->vlen_1;
 
     for (tagint i=0; i<brn->nvoxel; i++) {
@@ -812,9 +751,6 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
     nifti_image_write(nim);
     nifti_image_free(nim);
 
-    destroy(rcounts);
-    destroy(displs);
-    destroy(recv_buf);
   }
 
 }
@@ -852,8 +788,8 @@ void Output::sort_tag(Brain *brn, double *data, int dsize) {
  * Find the tag of a voxel from its global location x, y, z
  * ----------------------------------------------------------------------*/
 tagint Output::find_tag(Brain *brn, double x, double y, double z) {
-  int *nv = brn->nv;
-  double *boxlo = brn->boxlo;
+  auto &nv = brn->nv;
+  auto &boxlo = brn->boxlo;
   double vlen_1 = brn->vlen_1;
 
   int i = static_cast<int>( round((x - boxlo[0]) * vlen_1 - 0.5) );
@@ -867,11 +803,6 @@ tagint Output::find_tag(Brain *brn, double x, double y, double z) {
 nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
                                        const int dims[], int intent) {
   nifti_image *nim;
-  //nifti_1_header *nhdr;
-
-  //create(dims,8,"output:dims");
-
-  //nhdr = nifti_make_new_header(dims, DT_FLOAT32);
   nim = nifti_make_new_nim(dims,DT_FLOAT32,1);
 
   // header and image file names (.nii)
@@ -884,8 +815,6 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
     printf("Error: nifti_set_filenames cannot set the names for %s . \n", prefix);
     exit(1);
   }
-
-  //nhdr->sizeof_hdr = 348;
 
   for (int i=0; i<8; i++)
     nim->dim[i] = dims[i];
@@ -928,8 +857,6 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
   for (int i=1; i<8; i++)
     nim->nvox *= nim->dim[i];
 
-  //nhdr->vox_offset = 352;
-
   nim->scl_slope = 0.0;
   nim->scl_inter = 0.0;
 
@@ -939,16 +866,12 @@ nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
   nim->cal_min = 0.0;
   nim->cal_max = 0.0;
 
-  //nhdr->xyzt_units = NIFTI_UNITS_MICRON;
   nim->xyz_units = NIFTI_UNITS_MICRON;
   nim->time_units = NIFTI_UNITS_UNKNOWN;
 
   nim->slice_duration = 0.0;
   // initial time of the image
   nim->toffset = brn->step * brn->dt;
-
-  //nhdr->glmax = INT_MAX; // unused
-  //nhdr->glmin = INT_MIN; // unused
 
   str = "";
   for (int i=3; i<arg.size(); i++) {

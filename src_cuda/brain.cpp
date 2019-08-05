@@ -4,7 +4,6 @@
 #include "pointers.h"
 #include "brain.h"
 #include "input.h"
-#include "memory.h"
 #include "output.h"
 
 using namespace std;
@@ -19,8 +18,13 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
 
   allocations();
 
-  if (!me)
+  if (!me) {
     printf("Reading input, setup the system ... \n");
+    ofstream logfile;
+    logfile.open (flog, ios::trunc);
+    logfile << "*** LOG FILE ***" << endl;
+    logfile.close();
+  }
   input->file(arg[1], this);
 
   // output initial step
@@ -42,14 +46,14 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
 
 /* ----------------------------------------------------------------------*/
 Brain::~Brain() {
-  destroy();
+  if(nim)
+    nifti_image_free(nim);
 
   delete region;
   delete output;
   delete comm;
   delete init;
   delete input;
-  delete memory;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -80,18 +84,6 @@ void Brain::allocations() {
   c_cir = 0.0;
   tau_cir = 1.0;
 
-  memory->create(nv,ndim,"nv");
-  memory->create(nvl,ndim,"nvl");
-  memory->create(npart,ndim,"npart");
-
-  memory->create(boxlo,ndim,"boxlo");
-  memory->create(boxhi,ndim,"boxhi");
-  memory->create(lbox,ndim,"lbox");
-
-  memory->create(xlo,ndim,"xlo");
-  memory->create(xhi,ndim,"xhi");
-
-  memory = new Memory();
   input = new Input();
   init = new Init();
   comm = new Comm();
@@ -101,28 +93,4 @@ void Brain::allocations() {
   nim = NULL;
 
   newton_flux = 1;
-}
-
-/* ----------------------------------------------------------------------*/
-void Brain::destroy() {
-  memory->destroy(nv);
-  memory->destroy(nvl);
-  memory->destroy(npart);
-
-  memory->destroy(boxlo);
-  memory->destroy(boxhi);
-  memory->destroy(lbox);
-
-  memory->destroy(xlo);
-  memory->destroy(xhi);
-
-  memory->destroy(x);
-  memory->destroy(tag);
-
-  memory->destroy(num_neigh);
-  memory->destroy(neigh);
-
-  if(nim)
-    nifti_image_free(nim);
-
 }

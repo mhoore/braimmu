@@ -29,6 +29,13 @@ void Input::file(const char *fname, class Brain *brn) {
   do {
     getline(fr, str);
 
+    if (!brn->me) {
+      ofstream logfile;
+      logfile.open (flog, ios::app);
+      logfile << str << endl;
+      logfile.close();
+    }
+
     // ignore comments
     size_t found = str.find(comment);
     if (found != string::npos)

@@ -26,6 +26,18 @@ typedef int64_t tagint;
 //#define TAGINT_FORMAT "%d"
 //typedef int32_t tagint;
 
+// union data struct for packing 32-bit and 64-bit ints into double bufs
+// this avoids aliasing issues by having 2 pointers (double,int)
+union ubuf {
+  double d;
+  int64_t i;
+  ubuf(double arg) : d(arg) {}
+  ubuf(int64_t arg) : i(arg) {}
+  ubuf(int arg) : i(arg) {}
+};
+
+const string flog = "log.braimmu";
+
 enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
 
 //// model

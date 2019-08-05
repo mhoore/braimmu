@@ -11,13 +11,12 @@
 #include <sstream>
 
 #include "pointers.h"
-#include "memory.h"
 #include "brain.h"
 
 using namespace std;
 namespace brain_NS {
 
-class Comm : public Memory {
+class Comm {
  public:
   Comm();
   ~Comm();
@@ -37,7 +36,8 @@ class Comm : public Memory {
   void allocations(class Brain*);
 
   int comm_side[6];
-  double *send_buf,*recv_buf;
+  //double *send_buf,*recv_buf;
+  vector<double> send_buf,recv_buf;
   int comm_size, max_buf_size;
 
   int b_itr; // total number of balance iterations

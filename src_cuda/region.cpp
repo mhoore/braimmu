@@ -73,7 +73,7 @@ int Region::sphere(Brain *brn, vector<string> arg) {
 
   auto &agent = brn->agent;
 
-  double **x = brn->x;
+  auto &x = brn->x;
 
   double center[3];
   center[0] = stof(arg[1]);
@@ -96,9 +96,9 @@ int Region::sphere(Brain *brn, vector<string> arg) {
     if (!arg[c].compare("type")) {
       int type_one = stoi(arg[c+1]);
       for (int i=0; i<nall; i++) {
-        double delx = x[i][0] - center[0];
-        double dely = x[i][1] - center[1];
-        double delz = x[i][2] - center[2];
+        double delx = x[0][i] - center[0];
+        double dely = x[1][i] - center[1];
+        double delz = x[2][i] - center[2];
 
         double rsq = delx*delx + dely*dely + delz*delz;
 
@@ -113,9 +113,9 @@ int Region::sphere(Brain *brn, vector<string> arg) {
       int ag_id = brn->input->find_agent(arg[c]);
       double val_one = stof(arg[c+1]);
       for (int i=0; i<nall; i++) {
-        double delx = x[i][0] - center[0];
-        double dely = x[i][1] - center[1];
-        double delz = x[i][2] - center[2];
+        double delx = x[0][i] - center[0];
+        double dely = x[1][i] - center[1];
+        double delz = x[2][i] - center[2];
 
         double rsq = delx*delx + dely*dely + delz*delz;
 
@@ -143,7 +143,7 @@ int Region::block(Brain *brn, vector<string> arg) {
 
   auto &type = brn->type;
 
-  double **x = brn->x;
+  auto &x = brn->x;
 
   auto &agent = brn->agent;
 
@@ -167,8 +167,8 @@ int Region::block(Brain *brn, vector<string> arg) {
     if (!arg[c].compare("type")) {
       int type_one = stoi(arg[c+1]);
       for (int i=0; i<nall; i++) {
-        if (x[i][0] >= blo[0] && x[i][1] >= blo[1] && x[i][2] >= blo[2] &&
-            x[i][0] <= bhi[0] && x[i][1] <= bhi[1] && x[i][2] <= bhi[2]) {
+        if (x[0][i] >= blo[0] && x[1][i] >= blo[1] && x[2][i] >= blo[2] &&
+            x[0][i] <= bhi[0] && x[1][i] <= bhi[1] && x[2][i] <= bhi[2]) {
           if (in)
             type[i] = type_one;
         } else if (!in)
@@ -180,8 +180,8 @@ int Region::block(Brain *brn, vector<string> arg) {
       int ag_id = brn->input->find_agent(arg[c]);
       double val_one = stoi(arg[c+1]);
       for (int i=0; i<nall; i++) {
-        if (x[i][0] >= blo[0] && x[i][1] >= blo[1] && x[i][2] >= blo[2] &&
-            x[i][0] <= bhi[0] && x[i][1] <= bhi[1] && x[i][2] <= bhi[2]) {
+        if (x[0][i] >= blo[0] && x[1][i] >= blo[1] && x[2][i] >= blo[2] &&
+            x[0][i] <= bhi[0] && x[1][i] <= bhi[1] && x[2][i] <= bhi[2]) {
           if (in)
             agent[ag_id][i] = val_one;
         } else if (!in)

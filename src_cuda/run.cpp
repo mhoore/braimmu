@@ -13,6 +13,12 @@ void Brain::integrate(int Nrun) {
   double t0 = MPI_Wtime();
   double t1 = t0;
 
+  double mu0,mu1, sig0,sig1;
+  int N0,N1;
+
+  mu0 = mu1 = sig0 = sig1 = 0.0;
+  N0 = N1 = 0;
+
   int iter = 0;
   while (iter < Nrun) {
 
@@ -37,9 +43,25 @@ void Brain::integrate(int Nrun) {
     if (step % Nlog == 0) {
       MPI_Barrier(world);
       double t2 = MPI_Wtime();
-      if (!me)
-        printf("Step %i, time lapsed = %g sec, speed = %g steps/sec \n",
-               step, t2 - t0, float(Nlog)/(t2-t1) );
+      if (!me) {
+        double speed = float(Nlog)/(t2-t1);
+
+        N1 = N0 + 1;
+        mu1 = (N0 * mu0 + speed) / N1;
+        sig1 = sqrt( N0 * sig0 * sig0 / N1
+                   + N0 * (speed - mu0) * (speed - mu0) / (N1 * N1) );
+
+        char buf[256];
+        sprintf(buf,"Step %i, time lapsed = %g s, speed = %g +- %g steps/s \n",
+                step, t2 - t0, mu1, sig1 );
+
+        N0 = N1;
+        mu0 = mu1;
+        sig0 = sig1;
+
+        printf(buf);
+
+      }
       t1 = t2;
     }
 
@@ -47,9 +69,21 @@ void Brain::integrate(int Nrun) {
 
   MPI_Barrier(world);
   t1 = MPI_Wtime();
-  if (!me)
-    printf("Final step, total iterations = %i, total time lapsed = %g sec, speed = %g steps/sec \n",
-           Nrun, t1 - t0, float(Nrun)/(t1-t0) );
+  if (!me) {
+    char buf[256];
+    sprintf(buf,"Final step: \n"
+                "Total steps = %i \n"
+                "Tot time (sec) = %g \n"
+                "Speed (steps/s)= %g +- %g \n",
+            Nrun, t1 - t0, mu1, sig1 );
+    printf(buf);
+
+    ofstream logfile;
+    logfile.open (flog, ios::app);
+    logfile << buf;
+
+    logfile.close();
+  }
 
 }
 
@@ -58,8 +92,7 @@ void Brain::derivatives() {
 
   // set derivatives of all voxels to zero
   for (int ag_id=0; ag_id<num_agents; ag_id++)
-    for (int i=0; i<nall; i++)
-      deriv[ag_id][i] = 0.0;
+    fill(deriv[ag_id].begin(), deriv[ag_id].end(), 0.);
 
   // spatial derivatives
   for (int kk=1; kk<nvl[2]+1; kk++)
@@ -127,13 +160,16 @@ void Brain::derivatives() {
 
         for (int c=0; c<n_ngh; ++c) {
           int j = ngh[c];
+          int d = c;
+          if (c >= 3)
+            d = c - 3;
 
           if (type[j] == EMP_type) continue;
 
           double del_phr = agent[phr][i] - agent[phr][j];
 
           // diffusion of tau
-          double dum = 0.5 * (Dtau[c][i] + Dtau[c][j]) * del_phr;
+          double dum = 0.5 * (Dtau[d][i] + Dtau[d][j]) * del_phr;
           deriv[phr][i] -= dum;
           if (newton_flux)
             deriv[phr][j] += dum;

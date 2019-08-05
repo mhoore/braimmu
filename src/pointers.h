@@ -26,6 +26,8 @@ typedef int64_t tagint;
 //#define TAGINT_FORMAT "%d"
 //typedef int32_t tagint;
 
+const string flog = "log.braimmu";
+
 enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
 
 //// model

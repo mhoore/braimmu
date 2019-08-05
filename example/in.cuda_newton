@@ -1,11 +1,11 @@
-## Input file: normal in.cuda
+## Input file: cuda with newton flux
 ## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
 
 partition 2 6 1 
 num_conn_max 10 # maximum number of bond connections
 
 ## special for cuda
-newton_flux no
+newton_flux yes
 
 timestep 0.0005 # day
 nevery 10 # nevery steps for bond connections
