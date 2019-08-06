@@ -99,12 +99,12 @@ void Brain::derivatives() {
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = find_id(ii,jj,kk);
-        if (type[i] == EMP_type) continue;
+        if (type[i] & tissue[EMP]) continue;
 
         // direct function or time derivatives
 
         // sAb, fAb, and tau efflux from CSF
-        if (type[i] == CSF_type) {
+        if (type[i] & tissue[CSF]) {
           deriv[sAb][i] -= es * agent[sAb][i];
           deriv[fAb][i] -= es * agent[fAb][i];
           deriv[phr][i] -= ephi * agent[phr][i];
@@ -164,7 +164,7 @@ void Brain::derivatives() {
           if (c >= 3)
             d = c - 3;
 
-          if (type[j] == EMP_type) continue;
+          if (type[j] & tissue[EMP]) continue;
 
           double del_phr = agent[phr][i] - agent[phr][j];
 
@@ -183,39 +183,39 @@ void Brain::derivatives() {
             deriv[sAb][j] += dum;
 
           // only in parenchyma
-          if (type[i] != WM_type && type[i] != GM_type) continue;
-          if (type[j] != WM_type && type[j] != GM_type) continue;
+          if (type[i] & tissue[WM] || type[i] & tissue[GM])
+            if (type[j] & tissue[WM] || type[j] & tissue[GM]) {
+              double del_fAb = agent[fAb][i] - agent[fAb][j];
+              double del_mic = agent[mic][i] - agent[mic][j];
 
-          double del_fAb = agent[fAb][i] - agent[fAb][j];
-          double del_mic = agent[mic][i] - agent[mic][j];
+              // migration of microglia toward higher sAb concentrations
+              dum = cs * del_sAb;
+              if (del_sAb > 0.0)
+                dum *= agent[mic][j];
+              else
+                dum *= agent[mic][i];
 
-          // migration of microglia toward higher sAb concentrations
-          dum = cs * del_sAb;
-          if (del_sAb > 0.0)
-            dum *= agent[mic][j];
-          else
-            dum *= agent[mic][i];
+              deriv[mic][i] += dum;
+              if (newton_flux)
+                deriv[mic][j] -= dum;
 
-          deriv[mic][i] += dum;
-          if (newton_flux)
-            deriv[mic][j] -= dum;
+              // migration of microglia toward higher fAb concentrations
+              dum = cf * del_fAb;
+              if (del_fAb > 0.0)
+                dum *= agent[mic][j];
+              else
+                dum *= agent[mic][i];
 
-          // migration of microglia toward higher fAb concentrations
-          dum = cf * del_fAb;
-          if (del_fAb > 0.0)
-            dum *= agent[mic][j];
-          else
-            dum *= agent[mic][i];
+              deriv[mic][i] += dum;
+              if (newton_flux)
+                deriv[mic][j] -= dum;
 
-          deriv[mic][i] += dum;
-          if (newton_flux)
-            deriv[mic][j] -= dum;
-
-          // diffusion of microglia
-          dum = D_mic * del_mic;
-          deriv[mic][i] -= dum;
-          if (newton_flux)
-            deriv[mic][j] += dum;
+              // diffusion of microglia
+              dum = D_mic * del_mic;
+              deriv[mic][i] -= dum;
+              if (newton_flux)
+                deriv[mic][j] += dum;
+            }
         }
       }
 
@@ -229,7 +229,7 @@ void Brain::update() {
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = find_id(ii,jj,kk);
-        if (type[i] == EMP_type) continue;
+        if (type[i] & tissue[EMP]) continue;
 
         // time integration (Euler's scheme)
         for (int ag_id=0; ag_id<num_agents; ag_id++)

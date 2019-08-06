@@ -63,7 +63,7 @@ class Brain {
 
   double vlen, vlen_1, vlen_2, vvol, vvol_1; // voxel size
 
-  vector<int> type, group;
+  vector<int> tissue, type, group;
   vector<bool> is_loc; // local voxel = 1, ghost voxel = 0
 
   vector<tagint> tag; // tag of each voxel

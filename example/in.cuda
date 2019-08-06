@@ -1,7 +1,7 @@
 ## Input file: normal in.cuda
 ## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
 
-partition 2 6 1 
+partition 2 4 1 
 num_conn_max 10 # maximum number of bond connections
 
 ## special for cuda
@@ -60,11 +60,11 @@ read_mri group ../base/voi.nii 0 0
 
 read_mri rgb ../base/rgb.nii 0 255
 
-#balance y 20
+balance y 20
 
 ## outputs
-#dump mri 1000 dump.cuda. mic neu sAb fAb ast phr tau type group
-#statistics 1000 stat.cuda.dat
+dump mri 200 dump.cuda. mic neu sAb fAb ast phr tau type group
+statistics 200 stat.cuda.dat
 
 log 20
 run 200

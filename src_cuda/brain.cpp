@@ -30,7 +30,7 @@ Brain::Brain(int narg, char **arg, int rk, int np) {
   // output initial step
   if (!me)
     printf("Writing output for the initial step ... \n");
-  //output->lammpstrj(this);
+  output->lammpstrj(this);
 
   if (output->do_dump)
     output->dump(this);
@@ -93,4 +93,10 @@ void Brain::allocations() {
   nim = NULL;
 
   newton_flux = 1;
+
+  // set tissue
+  tissue.clear();
+  tissue.resize(num_types);
+  for (int i=0; i<num_types; i++)
+    tissue[i] = 1 << i;
 }

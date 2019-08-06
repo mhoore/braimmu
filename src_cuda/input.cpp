@@ -219,7 +219,7 @@ void Input::execute_command(Brain *brn) {
 
   /* Command: region - setting a region
    * syntax: region region_style arguments in/out keyword value
-   * example: region sphere 0.0 0.0 0.0 5.0e4 out type -1
+   * example: region sphere 0.0 0.0 0.0 5.0e4 out type 1
    * arguments: region styles: sphere, block, etc.
    * simulation constants or agents initial values to be
    * set in the region. in/out means inside or outside the region. */

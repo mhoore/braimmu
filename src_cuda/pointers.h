@@ -47,11 +47,12 @@ enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
 enum{mic = 0,neu,sAb,fAb,ast,phr,tau,cir, num_agents}; // ast,ilb1,il6,tnf
 const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","phr","tau","cir"}; // "ilb1","il6","tnf"
 
-/// voxel types
-const int EMP_type = -1; // Empty space type
-const int CSF_type = 0; // Cerebrospinal fluid type
-const int WM_type = 1; // White matter parenchyma type
-const int GM_type = 2; // Gray matter parenchyma type
+/// voxel tissue types
+// EMP : Empty space
+// CSF : Cerebrospinal fluid
+// WM : White matter parenchyma
+// GM : Grey matter parenchyma
+enum{EMP = 0,CSF,WM,GM, num_types};
 
 const int ndim = 3; // number of dimensions (3D)
 }

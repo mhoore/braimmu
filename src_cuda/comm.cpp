@@ -108,12 +108,13 @@ void Comm::balance(Brain *brn) {
 
   int nall = brn->nall;
 
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &is_loc = brn->is_loc;
 
   nloop_loc = 0;
   for (int i=0; i<nall; i++) {
-    if (type[i] == EMP_type) continue;
+    if (type[i] & tissue[EMP]) continue;
     if (!is_loc[i]) continue;
     nloop_loc++;
   }

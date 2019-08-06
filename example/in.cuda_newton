@@ -60,7 +60,7 @@ read_mri group ../base/voi.nii 0 0
 
 read_mri rgb ../base/rgb.nii 0 255
 
-#balance y 20
+balance y 20
 
 ## outputs
 #dump mri 1000 dump.cuda. mic neu sAb fAb ast phr tau type group

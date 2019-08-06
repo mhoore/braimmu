@@ -41,6 +41,7 @@ void Output::lammpstrj(Brain *brn) {
   auto &nvl = brn->nvl;
 
   auto &tag = brn->tag;
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &group = brn->group;
 
@@ -59,7 +60,12 @@ void Output::lammpstrj(Brain *brn) {
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
-        send_buf[c++] = ubuf(type[i]).d;
+        // type
+        int tis;
+        for (tis=0; tis<num_types; tis++)
+          if (type[i] & tissue[tis])
+            break;
+        send_buf[c++] = ubuf(tis).d;
         send_buf[c++] = ubuf(group[i]).d;
 
         send_buf[c++] = x[0][i];
@@ -107,9 +113,9 @@ void Output::lammpstrj(Brain *brn) {
     tagint c = 0;
     for (int i=0; i<nvoxel; i++) {
       fprintf(fw,TAGINT_FORMAT " ", (tagint) ubuf(recv_buf[c++]).i); // tag
+      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
       c++;
-      //fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
-      fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
+      //fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // group
       fprintf(fw,"%g ", recv_buf[c++]); // x
       fprintf(fw,"%g ", recv_buf[c++]); // y
       fprintf(fw,"%g ", recv_buf[c++]); // z
@@ -137,6 +143,7 @@ void Output::restart(Brain *brn) {
   tagint nvoxel = brn->nvoxel;
 
   auto &tag = brn->tag;
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &group = brn->group;
 
@@ -159,7 +166,14 @@ void Output::restart(Brain *brn) {
       for (int ii=1; ii<nvl[0]+1; ii++) {
         int i = brn->find_id(ii,jj,kk);
         send_buf[c++] = ubuf(tag[i]).d;
-        send_buf[c++] = ubuf(type[i]).d;
+
+        // type
+        int tis;
+        for (tis=0; tis<num_types; tis++)
+          if (type[i] & tissue[tis])
+            break;
+        send_buf[c++] = ubuf(tis).d;
+
         send_buf[c++] = ubuf(group[i]).d;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -217,8 +231,9 @@ void Output::restart(Brain *brn) {
       buft = (tagint) ubuf(recv_buf[c++]).i; // tag
       fb.write((char *)&buft,sizeof(buft));
 
-      bufi = (int) ubuf(recv_buf[c++]).i; // type
-      fb.write((char *)&bufi,sizeof(bufi));
+      // type
+      bufi = (int) ubuf(recv_buf[c++]).i;
+      fb.write((char *)&bufi,sizeof(bufi)); // type
 
       bufi = (int) ubuf(recv_buf[c++]).i; // group
       fb.write((char *)&bufi,sizeof(bufi));
@@ -231,24 +246,27 @@ void Output::restart(Brain *brn) {
 
     fb.close();
 
+    /*
     //read and check
-    //fw = fopen("test.txt","w");
-    //fb.open(dname,ios::binary|ios::in|ios::app);
-    //fb.seekg(0);
-    //fb.read((char *)&bufi,sizeof(bufi)); // step
-    //fprintf(fw,"%i \n", bufi);
-    //fb.read((char *)&buft,sizeof(buft)); //nvoxel
-    //fprintf(fw,TAGINT_FORMAT " \n", buft);
-    //for (i=0; i<nvoxel; i++) {
-    //  fb.read((char *)&buft,sizeof(buft)); // tag
-    //  fprintf(fw,TAGINT_FORMAT " ", buft);
-    //  fb.read((char *)&bufi,sizeof(bufi)); // type
-    //  fprintf(fw,"%i ", bufi);
-    //  fb.read((char *)&bufd,sizeof(bufd)); // fAb
-    //  fprintf(fw,"%g \n", bufd);
-    //}
-    //fb.close();
-    //fclose(fw);
+    fw = fopen("test.txt","w");
+    fb.open(dname,ios::binary|ios::in|ios::app);
+    fb.seekg(0);
+    fb.read((char *)&bufi,sizeof(bufi)); // step
+    fprintf(fw,"%i \n", bufi);
+    fb.read((char *)&buft,sizeof(buft)); //nvoxel
+    fprintf(fw,TAGINT_FORMAT " \n", buft);
+    for (i=0; i<nvoxel; i++) {
+      fb.read((char *)&buft,sizeof(buft)); // tag
+      fprintf(fw,TAGINT_FORMAT " ", buft);
+      fb.read((char *)&bufi,sizeof(bufi)); // type
+      fprintf(fw,"%i ", bufi);
+      fb.read((char *)&bufd,sizeof(bufd)); // fAb
+      fprintf(fw,"%g \n", bufd);
+    }
+    fb.close();
+    fclose(fw);
+    */
+
   }
 
 }
@@ -263,6 +281,7 @@ void Output::statistics(Brain *brn) {
 
   auto &agent = brn->agent;
 
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
 
   auto &nvl = brn->nvl;
@@ -284,12 +303,11 @@ void Output::statistics(Brain *brn) {
         int i = brn->find_id(ii,jj,kk);
 
         int c;
-        if (type[i] == WM_type || type[i] == GM_type)
+        if (type[i] & tissue[EMP]) continue;
+        else if (type[i] & tissue[WM] || type[i] & tissue[GM])
           c = 0;
-        else if (type[i] == CSF_type)
+        else if (type[i] & tissue[CSF])
           c = 1;
-        else
-          continue;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           agent_val[ag_id][c] += agent[ag_id][i];
@@ -468,6 +486,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
   tagint nvoxel = brn->nvoxel;
 
   auto &x = brn->x;
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &group = brn->group;
 
@@ -507,8 +526,14 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
         int aid = 3;
         while (aid < arg.size()) {
           int ag_id = brn->input->find_agent(arg[aid]);
-          if (!arg[aid].compare("type"))
-            send_buf[c++] = ubuf(type[i]).d;
+          if (!arg[aid].compare("type")) {
+            // type
+            int tis;
+            for (tis=0; tis<num_types; tis++)
+              if (type[i] & tissue[tis])
+                break;
+            send_buf[c++] = ubuf(tis).d;
+          }
           else if (!arg[aid].compare("group"))
             send_buf[c++] = ubuf(group[i]).d;
           else if (ag_id >= 0)
@@ -604,6 +629,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
   tagint nvoxel = brn->nvoxel;
 
   auto &x = brn->x;
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &group = brn->group;
 
@@ -654,8 +680,13 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
         int aid = 3;
         while (aid < arg.size()) {
           int ag_id = brn->input->find_agent(arg[aid]);
-          if (!arg[aid].compare("type"))
-            send_buf[c++] = ubuf(type[i]).d;
+          if (!arg[aid].compare("type")) {
+            int tis;
+            for (tis=0; tis<num_types; tis++)
+              if (type[i] & tissue[tis])
+                break;
+            send_buf[c++] = ubuf(tis).d;
+          }
           else if (!arg[aid].compare("group"))
             send_buf[c++] = ubuf(group[i]).d;
           else if (!arg[aid].compare("rgb")) {

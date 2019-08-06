@@ -53,8 +53,8 @@ Nproc = ( ( 1, 1,  1, 1),
           ( 8, 2,  4, 1),
           (12, 2,  6, 1) )
 
-method = ('cuda', 'cuda_newton', 'run')
-exes = ('../src_cuda/braimmu.exe', '../src_cuda/braimmu.exe', '../src/braimmu.exe')
+method = ('cuda', 'cuda_newton')
+exes = ('../src_cuda/braimmu.exe', '../src_cuda/braimmu.exe')
 
 def main():
     

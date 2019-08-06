@@ -471,6 +471,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
   int nall = brn->nall;
 
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &group = brn->group;
   auto &agent = brn->agent;
@@ -487,8 +488,8 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   else if (nim->xyz_units == NIFTI_UNITS_MICRON)
     conver_fac = 1.0;
 
-  // set all voxel types and groups as EMP_type
-  fill(type.begin(),type.end(),EMP_type);
+  // set all voxel types as EMP and groups as 0
+  fill(type.begin(),type.end(),tissue[EMP]);
   fill(group.begin(),group.end(),0);
   for (auto &a: Dtau)
     fill(a.begin(),a.end(),brn->Dtau_max);
@@ -592,7 +593,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
           v_prop[i][j] /= n_prop[i][j];
 
         if (!arg[i].compare("type"))
-          type[j] = static_cast<int>( round(v_prop[i][j]) );
+          type[j] = static_cast<int>( round(v_prop[i][j]) ); // NOTE: this may lead to errors
         else if (!arg[i].compare("group")) {
           double fractpart, intpart;
           fractpart = modf (v_prop[i][j], &intpart);
@@ -742,19 +743,19 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
          * ----------------------------------------------------------------------*/
         if (!mri_arg[tis][0].compare("all")) {
           if (v_prop[i] <= 0) {
-            type[i] = EMP_type;
+            type[i] = tissue[EMP];
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] < thres_val) {
-            type[i] = CSF_type;
+            type[i] = tissue[CSF];
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
 
           else if (v_prop[i] > thres_val) {
-            type[i] = GM_type;
+            type[i] = tissue[GM];
             agent[neu][i] = (v_prop[i] - thres_val) * coef * max_val;
           }
         }
@@ -763,7 +764,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
          * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("wm")) {
           if (v_prop[i] > thres_val) {
-            type[i] = WM_type;
+            type[i] = tissue[WM];
             agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
@@ -772,7 +773,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
          * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("gm")) {
           if (v_prop[i] > thres_val) {
-            type[i] = GM_type;
+            type[i] = tissue[GM];
             agent[neu][i] += (v_prop[i] - thres_val) * coef * max_val;
           }
         }
@@ -781,7 +782,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
          * ----------------------------------------------------------------------*/
         else if (!mri_arg[tis][0].compare("csf")) {
           if (v_prop[i] > thres_val) {
-            type[i] = CSF_type;
+            type[i] = tissue[CSF];
             for (int ag_id=0; ag_id<num_agents; ag_id++)
               agent[ag_id][i] = 0.0;
           }
@@ -815,13 +816,13 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
 
   // set all values to zero for EMT_type voxels
   for (int i=0; i<nall; i++) {
-    if (type[i] == EMP_type) {
+    if (type[i] & tissue[EMP]) {
       for (int ag_id=0; ag_id<num_agents; ag_id++)
         agent[ag_id][i] = 0.0;
       Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = 0.0;
     }
 
-    else if (type[i] == CSF_type)
+    else if (type[i] & tissue[CSF])
       Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = brn->Dtau_max;
 
     //printf("HERE %li max = %g , %g %g %g \n",
