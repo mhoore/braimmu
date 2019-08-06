@@ -144,7 +144,7 @@ void Init::print_mri_properties(Brain *brn, nifti_image *nim, string fname) {
   cout << buf << endl;
   logfile << buf << endl;
 
-  for (int i=1; i<nim->ndim; i++) {
+  for (int i=1; i<=nim->ndim; i++) {
     sprintf(buf,"dim[%i] = %i, pixdim[i] = %g ",
            i,nim->dim[i],i,nim->pixdim[i]);
     cout << buf << endl;
