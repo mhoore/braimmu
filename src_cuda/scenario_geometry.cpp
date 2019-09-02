@@ -1,7 +1,7 @@
 #include "scenario_geometry.h"
 
 using namespace std;
-using namespace ns_connectome;
+using namespace ns_geometry;
 
 /* ----------------------------------------------------------------------*/
 ScenarioGeometry::ScenarioGeometry(int narg, char** arg, int rk, int np) {
@@ -313,6 +313,44 @@ void ScenarioGeometry::update() {
           agent[ag_id][i] += deriv[ag_id][i] * dt;
       }
 
+}
+
+/* ----------------------------------------------------------------------*/
+int ScenarioGeometry::set_property(string key, string val) {
+
+  if (!key.compare("diff_sAb")) prop.diff_sAb = stof(val);
+  else if (!key.compare("kp")) prop.kp = stof(val);
+  else if (!key.compare("kn")) prop.kn = stof(val);
+  else if (!key.compare("ds")) prop.ds = stof(val);
+  else if (!key.compare("df")) prop.df = stof(val);
+  else if (!key.compare("es")) prop.es = stof(val);
+  else if (!key.compare("diff_mic")) prop.diff_mic = stof(val);
+  else if (!key.compare("sens_s")) prop.sens_s = stof(val);
+  else if (!key.compare("sens_f")) prop.sens_f = stof(val);
+  else if (!key.compare("Ha")) prop.Ha = stof(val);
+  else if (!key.compare("ka")) prop.ka = stof(val);
+  else if (!key.compare("dna")) prop.dna = stof(val);
+  else if (!key.compare("dnf")) prop.dnf = stof(val);
+  else if (!key.compare("C_cir")) {
+    prop.C_cir = stof(val);
+    init_val[cir] = prop.C_cir;
+  }
+  else if (!key.compare("c_cir")) prop.c_cir = stof(val);
+  else if (!key.compare("tau_cir")) prop.tau_cir = stof(val);
+  else if (find_agent(key) >= 0) init_val[find_agent(key)] = stof(val);
+  else return 0;
+
+}
+
+/* ----------------------------------------------------------------------*/
+int ScenarioGeometry::find_agent(string str) {
+  int ag_found = -1;
+
+  for (int ag_id=0; ag_id<num_agents; ag_id++)
+    if (!str.compare(ag_str[ag_id]))
+      ag_found = ag_id;
+
+  return ag_found;
 }
 
 /*    ////////DEBUG/////////////////////

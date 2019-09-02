@@ -335,6 +335,59 @@ void ScenarioConnectome::update() {
 
 }
 
+/* ----------------------------------------------------------------------*/
+int ScenarioConnectome::set_property(string key, string val) {
+
+  if (!key.compare("diff_sAb")) prop.diff_sAb = stof(val);
+  else if (!key.compare("kp")) prop.kp = stof(val);
+  else if (!key.compare("kn")) prop.kn = stof(val);
+  else if (!key.compare("ds")) prop.ds = stof(val);
+  else if (!key.compare("df")) prop.df = stof(val);
+  else if (!key.compare("es")) prop.es = stof(val);
+  else if (!key.compare("diff_mic")) prop.diff_mic = stof(val);
+  else if (!key.compare("sens_s")) prop.sens_s = stof(val);
+  else if (!key.compare("sens_f")) prop.sens_f = stof(val);
+  else if (!key.compare("Ha")) prop.Ha = stof(val);
+  else if (!key.compare("ka")) prop.ka = stof(val);
+  else if (!key.compare("dnt")) prop.dnt = stof(val);
+  else if (!key.compare("ktau")) prop.ktau = stof(val);
+  else if (!key.compare("kphi")) prop.kphi = stof(val);
+  else if (!key.compare("ephi")) prop.ephi = stof(val);
+  else if (!key.compare("C_cir")) {
+    prop.C_cir = stof(val);
+    init_val[cir] = prop.C_cir;
+  }
+  else if (!key.compare("c_cir")) prop.c_cir = stof(val);
+  else if (!key.compare("tau_cir")) prop.tau_cir = stof(val);
+  else if (!key.compare("diff_tau")) prop.diff_tau = stof(val);
+  else if (find_agent(key) >= 0) init_val[find_agent(key)] = stof(val);
+  else return 0;
+
+}
+
+/* ----------------------------------------------------------------------*/
+int ScenarioConnectome::find_agent(string str) {
+  int ag_found = -1;
+
+  for (int ag_id=0; ag_id<num_agents; ag_id++)
+    if (!str.compare(ag_str[ag_id]))
+      ag_found = ag_id;
+
+  return ag_found;
+}
+
+/* ----------------------------------------------------------------------
+ * Set constant global simulation parameters.
+ * ----------------------------------------------------------------------*/
+void ScenarioConnectome::set_parameters() {
+  prop.D_sAb = prop.diff_sAb * vlen_2;
+  prop.D_mic = prop.diff_mic * vlen_2;
+  prop.cs = prop.sens_s * vlen_2;
+  prop.cf = prop.sens_f * vlen_2;
+  prop.omega_cir = 2.0 * PI / prop.tau_cir;
+  prop.Dtau_max = prop.diff_tau * vlen_2;
+}
+
 /*    ////////DEBUG/////////////////////
     FILE* fw;
     fw = fopen("out.txt","a");

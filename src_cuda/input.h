@@ -21,7 +21,6 @@ class Input {
   int read_restart(class VirtualBrain*);
   int read_statistics(class VirtualBrain*);
   int read_dump(class VirtualBrain*);
-  int find_agent(string);
 
   ifstream fr;
 

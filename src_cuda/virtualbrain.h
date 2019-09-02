@@ -16,6 +16,9 @@ class VirtualBrain {
   virtual void integrate(int) = 0;
   virtual void update() = 0;
   virtual void derivatives() = 0;
+  virtual int set_property(string,string) = 0;
+  virtual int find_agent(string) = 0;
+  virtual void set_parameters() = 0;
 
   /* ----------------------------------------------------------------------
    * Find the local voxel id from local coordinates i,j,k
@@ -71,8 +74,6 @@ class VirtualBrain {
   /// model parameters
   double init_val[num_agents];
   array<vector<double>, num_agents> agent, deriv;
-
-  ns_connectome::properties prop;
 
 };
 

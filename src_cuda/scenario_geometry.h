@@ -4,7 +4,6 @@
 #include "virtualbrain.h"
 
 using namespace std;
-using namespace ns_connectome;
 
 class ScenarioGeometry : public VirtualBrain {
  public:
@@ -15,6 +14,11 @@ class ScenarioGeometry : public VirtualBrain {
   void integrate(int);
   void update();
   void derivatives();
+  int set_property(string,string);
+  int find_agent(string);
+  void set_parameters();
+
+  ns_geometry::properties prop;
 
 };
 

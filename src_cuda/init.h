@@ -18,7 +18,6 @@ class Init {
   void voxels(class VirtualBrain*, int);
   void neighbor(class VirtualBrain*);
   void allocations(class VirtualBrain*, int);
-  void set_parameters(class VirtualBrain*);
 
   int mri_boundaries(class VirtualBrain*, nifti_image*);
   void mri_topology(class VirtualBrain*, nifti_image*);

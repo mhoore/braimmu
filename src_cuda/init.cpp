@@ -4,8 +4,6 @@
 using namespace std;
 using namespace ns_connectome;
 
-#define PI 3.141592653589793
-
 /* ---------------------------------------------------------------------- */
 Init::Init() {
 }
@@ -397,18 +395,6 @@ void Init::allocations(VirtualBrain *brn, int allocated) {
         brn->agent[ag_id][i] = brn->init_val[ag_id];
   }
 
-}
-
-/* ----------------------------------------------------------------------
- * Set constant global simulation parameters.
- * ----------------------------------------------------------------------*/
-void Init::set_parameters(VirtualBrain *brn) {
-  brn->prop.D_sAb = brn->prop.diff_sAb * brn->vlen_2;
-  brn->prop.D_mic = brn->prop.diff_mic * brn->vlen_2;
-  brn->prop.cs = brn->prop.sens_s * brn->vlen_2;
-  brn->prop.cf = brn->prop.sens_f * brn->vlen_2;
-  brn->prop.omega_cir = 2.0 * PI / brn->prop.tau_cir;
-  brn->prop.Dtau_max = brn->prop.diff_tau * brn->vlen_2;
 }
 
 /* ----------------------------------------------------------------------

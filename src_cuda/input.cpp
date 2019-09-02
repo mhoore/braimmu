@@ -3,6 +3,7 @@
 
 using namespace std;
 using namespace ns_connectome;
+using namespace ns_geometry;
 
 /* ---------------------------------------------------------------------- */
 Input::Input() {
@@ -309,34 +310,12 @@ void Input::execute_command(VirtualBrain *brn) {
 int Input::read_parameters(VirtualBrain *brn) {
   int c = 0;
 
+
   do {
     if (c+1 >= narg)
       return 0;
-    if (!arg[c].compare("diff_sAb")) brn->prop.diff_sAb = stof(arg[c+1]);
-    else if (!arg[c].compare("kp")) brn->prop.kp = stof(arg[c+1]);
-    else if (!arg[c].compare("kn")) brn->prop.kn = stof(arg[c+1]);
-    else if (!arg[c].compare("ds")) brn->prop.ds = stof(arg[c+1]);
-    else if (!arg[c].compare("df")) brn->prop.df = stof(arg[c+1]);
-    else if (!arg[c].compare("es")) brn->prop.es = stof(arg[c+1]);
-    else if (!arg[c].compare("diff_mic")) brn->prop.diff_mic = stof(arg[c+1]);
-    else if (!arg[c].compare("sens_s")) brn->prop.sens_s = stof(arg[c+1]);
-    else if (!arg[c].compare("sens_f")) brn->prop.sens_f = stof(arg[c+1]);
-    else if (!arg[c].compare("Ha")) brn->prop.Ha = stof(arg[c+1]);
-    else if (!arg[c].compare("ka")) brn->prop.ka = stof(arg[c+1]);
-    else if (!arg[c].compare("dnt")) brn->prop.dnt = stof(arg[c+1]);
-    else if (!arg[c].compare("ktau")) brn->prop.ktau = stof(arg[c+1]);
-    else if (!arg[c].compare("kphi")) brn->prop.kphi = stof(arg[c+1]);
-    else if (!arg[c].compare("ephi")) brn->prop.ephi = stof(arg[c+1]);
-    else if (!arg[c].compare("C_cir")) {
-      brn->prop.C_cir = stof(arg[c+1]);
-      brn->init_val[cir] = brn->prop.C_cir;
-    }
-    else if (!arg[c].compare("c_cir")) brn->prop.c_cir = stof(arg[c+1]);
-    else if (!arg[c].compare("tau_cir")) brn->prop.tau_cir = stof(arg[c+1]);
-    else if (!arg[c].compare("diff_tau")) brn->prop.diff_tau = stof(arg[c+1]);
-    else if (find_agent(arg[c]) >= 0) brn->init_val[find_agent(arg[c])] = stof(arg[c+1]);
-    else return 0;
-
+    if ( !brn->set_property(arg[c],arg[c+1]) )
+      return 0;
     c += 2;
   } while (c < narg);
 
@@ -418,15 +397,4 @@ int Input::read_dump(VirtualBrain *brn) {
   }
 
   return 1;
-}
-
-/* ----------------------------------------------------------------------*/
-int Input::find_agent(string str) {
-  int ag_found = -1;
-
-  for (int ag_id=0; ag_id<num_agents; ag_id++)
-    if (!str.compare(ag_str[ag_id]))
-      ag_found = ag_id;
-
-  return ag_found;
 }
