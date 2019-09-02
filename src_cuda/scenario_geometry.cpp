@@ -1,14 +1,108 @@
-#include <mpi.h>
-#include "math.h"
-
-#include "pointers.h"
-#include "brain.h"
+#include "scenario_geometry.h"
 
 using namespace std;
-using namespace brain_NS;
+using namespace ns_connectome;
 
 /* ----------------------------------------------------------------------*/
-void Brain::integrate(int Nrun) {
+ScenarioGeometry::ScenarioGeometry(int narg, char** arg, int rk, int np) {
+  me = rk;
+  nproc = np;
+
+  MPI_Comm_split(MPI_COMM_WORLD,0,me,&world);
+
+  allocations();
+
+  if (!me) {
+    printf("Reading input, setup the system ... \n");
+    ofstream logfile;
+    logfile.open (flog, ios::trunc);
+    logfile << "*** LOG FILE ***" << endl;
+    logfile.close();
+  }
+
+  scenario = arg[1];
+  input->file(arg[2], this);
+
+  // output initial step
+  if (!me)
+    printf("Writing output for the initial step ... \n");
+  //output->lammpstrj(this);
+
+  if (output->do_dump)
+    output->dump(this);
+
+  if (output->severy > 0)
+    output->statistics(this);
+
+  if (!me)
+    printf("Integration started. \n");
+  integrate(Nrun);
+
+}
+
+/* ----------------------------------------------------------------------*/
+ScenarioGeometry::~ScenarioGeometry() {
+  if(nim)
+    nifti_image_free(nim);
+
+  delete region;
+  delete output;
+  delete comm;
+  delete init;
+  delete input;
+}
+
+/* ----------------------------------------------------------------------*/
+void ScenarioGeometry::allocations() {
+  nvoxel = 0;
+  nlocal = nghost = nall = 0;
+  step = Nrun = 0;
+  Nlog = 1000;
+
+  dt = 0.0;
+  nevery = -1;
+  vlen = vlen_1 = vlen_2 = 0.0;
+  vvol = vvol_1 = 0.0;
+
+  for (int ag_id=0; ag_id<num_agents; ag_id++)
+    init_val[ag_id] = -1.0;
+
+  prop.D_sAb = prop.diff_sAb = 0.0;
+  prop.D_mic = prop.diff_mic = 0.0;
+  prop.cs = prop.sens_s = prop.cf = prop.sens_f = 0.0;
+  prop.kp = prop.kn = 0.0;
+  prop.ds = prop.df = 0.0;
+  prop.es = 0.0;
+  prop.Ha = 0.0;
+  prop.ka = 0.0;
+
+  prop.C_cir = 1.0;
+  prop.c_cir = 0.0;
+  prop.tau_cir = 1.0;
+  prop.omega_cir = 0.0;
+
+  prop.dna = 0.0;
+  prop.dnf = 0.0;
+
+  input = new Input();
+  init = new Init();
+  comm = new Comm();
+  output = new Output();
+  region = new Region();
+
+  nim = NULL;
+
+  newton_flux = 1;
+
+  // set tissue
+  tissue.clear();
+  tissue.resize(num_types);
+  for (int i=0; i<num_types; i++)
+    tissue[i] = 1 << i;
+}
+
+/* ----------------------------------------------------------------------*/
+void ScenarioGeometry::integrate(int Nrun) {
   MPI_Barrier(world);
   double t0 = MPI_Wtime();
   double t1 = t0;
@@ -88,7 +182,7 @@ void Brain::integrate(int Nrun) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Brain::derivatives() {
+void ScenarioGeometry::derivatives() {
 
   // set derivatives of all voxels to zero
   for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -105,43 +199,34 @@ void Brain::derivatives() {
 
         // sAb, fAb, and tau efflux from CSF
         if (type[i] & tissue[CSF]) {
-          deriv[sAb][i] -= es * agent[sAb][i];
-          deriv[fAb][i] -= es * agent[fAb][i];
-          deriv[phr][i] -= ephi * agent[phr][i];
+          deriv[sAb][i] -= prop.es * agent[sAb][i];
+          deriv[fAb][i] -= prop.es * agent[fAb][i];
         }
         // in parenchyma (WM and GM)
         else {
-          double dum = kp * agent[sAb][i] * agent[fAb][i]
-                     + kn * agent[sAb][i] * agent[sAb][i];
+          double dum = prop.kp * agent[sAb][i] * agent[fAb][i]
+                     + prop.kn * agent[sAb][i] * agent[sAb][i];
 
           // sAb
           deriv[sAb][i] += agent[neu][i] * agent[cir][i]
                             - dum
-                            - ds * agent[mic][i] * agent[sAb][i];
+                            - prop.ds * agent[mic][i] * agent[sAb][i];
           // fAb
           deriv[fAb][i] += dum
-                           - df * agent[mic][i] * agent[fAb][i];
+                           - prop.df * agent[mic][i] * agent[fAb][i];
 
-          dum = ktau * agent[phr][i];
-
-          // tau protein phosphorylation due to fAb and neu
-          deriv[phr][i] += kphi * agent[fAb][i] * agent[neu][i]
-                         - dum;
-
-          // tau tangle formation from phosphorylated tau
-          deriv[tau][i] += dum;
-
-          // neuronal death due to tau aggregation
-          deriv[neu][i] -= dnt * agent[tau][i] * agent[neu][i];
+          // neuronal death due to astrogliosis
+          deriv[neu][i] -= (prop.dna * agent[ast][i]
+                             + prop.dnf * agent[fAb][i]) * agent[neu][i];
 
           // astrogliosis
           dum = agent[fAb][i] * agent[mic][i];
-          deriv[ast][i] = ka * (dum / (dum + Ha) - agent[ast][i]);
+          deriv[ast][i] = prop.ka * (dum / (dum + prop.Ha) - agent[ast][i]);
 
           // circadian rhythm
-          if (c_cir > 0)
-            deriv[cir][i] = - C_cir * c_cir * omega_cir
-                            * sin(omega_cir * dt * step);
+          if (prop.c_cir > 0)
+            deriv[cir][i] = - prop.C_cir * prop.c_cir * prop.omega_cir
+                            * sin(prop.omega_cir * dt * step);
         }
 
         // spatial derivatives: fluxes
@@ -166,18 +251,10 @@ void Brain::derivatives() {
 
           if (type[j] & tissue[EMP]) continue;
 
-          double del_phr = agent[phr][i] - agent[phr][j];
-
-          // diffusion of tau
-          double dum = 0.5 * (Dtau[d][i] + Dtau[d][j]) * del_phr;
-          deriv[phr][i] -= dum;
-          if (newton_flux)
-            deriv[phr][j] += dum;
-
           double del_sAb = agent[sAb][i] - agent[sAb][j];
 
           // diffusion of sAb
-          dum = D_sAb * del_sAb;
+          double dum = prop.D_sAb * del_sAb;
           deriv[sAb][i] -= dum;
           if (newton_flux)
             deriv[sAb][j] += dum;
@@ -189,7 +266,7 @@ void Brain::derivatives() {
               double del_mic = agent[mic][i] - agent[mic][j];
 
               // migration of microglia toward higher sAb concentrations
-              dum = cs * del_sAb;
+              dum = prop.cs * del_sAb;
               if (del_sAb > 0.0)
                 dum *= agent[mic][j];
               else
@@ -200,7 +277,7 @@ void Brain::derivatives() {
                 deriv[mic][j] -= dum;
 
               // migration of microglia toward higher fAb concentrations
-              dum = cf * del_fAb;
+              dum = prop.cf * del_fAb;
               if (del_fAb > 0.0)
                 dum *= agent[mic][j];
               else
@@ -211,7 +288,7 @@ void Brain::derivatives() {
                 deriv[mic][j] -= dum;
 
               // diffusion of microglia
-              dum = D_mic * del_mic;
+              dum = prop.D_mic * del_mic;
               deriv[mic][i] -= dum;
               if (newton_flux)
                 deriv[mic][j] += dum;
@@ -222,7 +299,7 @@ void Brain::derivatives() {
 }
 
 /* ----------------------------------------------------------------------*/
-void Brain::update() {
+void ScenarioGeometry::update() {
 
   // update local voxels
   for (int kk=1; kk<nvl[2]+1; kk++)
@@ -234,16 +311,8 @@ void Brain::update() {
         // time integration (Euler's scheme)
         for (int ag_id=0; ag_id<num_agents; ag_id++)
           agent[ag_id][i] += deriv[ag_id][i] * dt;
-
       }
 
-}
-
-/* ----------------------------------------------------------------------
- * Find the local voxel id from local coordinates i,j,k
- * ----------------------------------------------------------------------*/
-int Brain::find_id(int i, int j, int k) {
-  return i + (nvl[0] + 2) * (j + (nvl[1] + 2) * k);
 }
 
 /*    ////////DEBUG/////////////////////

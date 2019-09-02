@@ -1,0 +1,6 @@
+# statistics over all voxels
+# step region mic neu sAb fAb ast phr tau cir 
+0 PAR 1.1e+07 1.32183e+07 0 0 0 0 0 2e-11 
+0 CSF 0 0 0 0 0 0 0 0 
+200 PAR 1.1e+07 1.32183e+07 2.27941e-05 4.24775e-12 1.2094e-13 1.27107e-09 1.18673e-09 2e-11 
+200 CSF 0 0 9.55418e-06 0 0 1.20413e-10 0 0 

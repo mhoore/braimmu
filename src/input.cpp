@@ -169,6 +169,27 @@ void Input::execute_command(Brain *brn) {
       }
   }
 
+  /* Command: newton_flux: for calculating fluxes only once
+   * between each pair of voxels.
+   * syntax: newton_flux keyword
+   * example: newton_flux no
+   * arguments:
+   * keywords: yes, no
+   * default: yes */
+  else if (!command.compare("newton_flux")) {
+    if (narg < 1) {
+      printf("Error: newton_flux \n");
+      exit(1);
+    }
+
+    if (!(*arg)[0].compare("yes")) brn->newton_flux = 1;
+    else if (!(*arg)[0].compare("no")) brn->newton_flux = 0;
+    else {
+      printf("Error: newton_flux keyword not recognized! \n");
+      exit(1);
+    }
+  }
+
   /* Command: read_mri - assigning an mri nifti image file (.nii) for
    * the topology of the system.
    * syntax: read_mri keyword file.nii thres_val max_val
@@ -198,7 +219,7 @@ void Input::execute_command(Brain *brn) {
 
   /* Command: region - setting a region
    * syntax: region region_style arguments in/out keyword value
-   * example: region sphere 0.0 0.0 0.0 5.0e4 out type -1
+   * example: region sphere 0.0 0.0 0.0 5.0e4 out type 1
    * arguments: region styles: sphere, block, etc.
    * simulation constants or agents initial values to be
    * set in the region. in/out means inside or outside the region. */

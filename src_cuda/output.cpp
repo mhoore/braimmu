@@ -1,17 +1,12 @@
-#include <mpi.h>
-#include "math.h"
-
-#include "pointers.h"
-#include "brain.h"
+#include "virtualbrain.h"
 #include "output.h"
 
 #include <climits>
-
 #include <unistd.h> // lseek,read,write
 #include <fcntl.h> // open etc.
 
 using namespace std;
-using namespace brain_NS;
+using namespace ns_connectome;
 
 /* ---------------------------------------------------------------------- */
 Output::Output() {
@@ -28,7 +23,7 @@ Output::~Output() {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::lammpstrj(Brain *brn) {
+void Output::lammpstrj(VirtualBrain *brn) {
 
   MPI_Comm world = brn->world;
 
@@ -131,7 +126,7 @@ void Output::lammpstrj(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::restart(Brain *brn) {
+void Output::restart(VirtualBrain *brn) {
   if (brn->step % revery != 0) return;
 
   MPI_Comm world = brn->world;
@@ -272,7 +267,7 @@ void Output::restart(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::statistics(Brain *brn) {
+void Output::statistics(VirtualBrain *brn) {
   if (brn->step % severy != 0) return;
 
   MPI_Comm world = brn->world;
@@ -362,7 +357,7 @@ void Output::statistics(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::statistics_sphere(Brain *brn) {
+void Output::statistics_sphere(VirtualBrain *brn) {
   if (brn->step % severy != 0) return;
 
   MPI_Comm world = brn->world;
@@ -456,7 +451,7 @@ void Output::statistics_sphere(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::dump(Brain *brn) {
+void Output::dump(VirtualBrain *brn) {
   for (int i=0; i<dump_arg.size(); i++) {
 
     if (brn->step % stoi(dump_arg[i][1]) != 0) continue;
@@ -475,7 +470,7 @@ void Output::dump(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::dump_txt(Brain *brn, vector<string> arg) {
+void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 
   MPI_Comm world = brn->world;
 
@@ -618,7 +613,7 @@ void Output::dump_txt(Brain *brn, vector<string> arg) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::dump_mri(Brain *brn, vector<string> arg) {
+void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
   MPI_Comm world = brn->world;
 
@@ -637,7 +632,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 
   auto &agent = brn->agent;
 
-  auto &Dtau = brn->Dtau;
+  auto &Dtau = brn->prop.Dtau;
 
   int dsize = 3;
   tagint c = 3;
@@ -787,7 +782,7 @@ void Output::dump_mri(Brain *brn, vector<string> arg) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Output::sort_tag(Brain *brn, double *data, int dsize) {
+void Output::sort_tag(VirtualBrain *brn, double *data, int dsize) {
   tagint i = 0;
   while (i < brn->nvoxel) {
     tagint ii = i*dsize;
@@ -818,7 +813,7 @@ void Output::sort_tag(Brain *brn, double *data, int dsize) {
 /* ----------------------------------------------------------------------
  * Find the tag of a voxel from its global location x, y, z
  * ----------------------------------------------------------------------*/
-tagint Output::find_tag(Brain *brn, double x, double y, double z) {
+tagint Output::find_tag(VirtualBrain *brn, double x, double y, double z) {
   auto &nv = brn->nv;
   auto &boxlo = brn->boxlo;
   double vlen_1 = brn->vlen_1;
@@ -831,7 +826,7 @@ tagint Output::find_tag(Brain *brn, double x, double y, double z) {
 }
 
 /* ----------------------------------------------------------------------*/
-nifti_image* Output::nifti_image_setup(Brain *brn, vector<string> arg,
+nifti_image* Output::nifti_image_setup(VirtualBrain *brn, vector<string> arg,
                                        const int dims[], int intent) {
   nifti_image *nim;
   nim = nifti_make_new_nim(dims,DT_FLOAT32,1);

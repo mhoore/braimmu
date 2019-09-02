@@ -12,7 +12,6 @@
 
 #include "pointers.h"
 #include "brain.h"
-#include "memory.h"
 
 #include "nifti1.h"
 #include "nifti1_io.h"
@@ -21,7 +20,7 @@
 using namespace std;
 namespace brain_NS {
 
-class Input : public Memory {
+class Input {
  public:
   Input();
   ~Input();

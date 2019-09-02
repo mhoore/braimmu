@@ -1,39 +1,29 @@
 #ifndef COMM_H
 #define COMM_H
 
-#include <vector>
-#include "stdio.h"
-#include "stdlib.h"
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <string>
-#include <sstream>
-
 #include "pointers.h"
-#include "brain.h"
 
 using namespace std;
-namespace brain_NS {
+using namespace ns_connectome;
 
 class Comm {
  public:
   Comm();
   ~Comm();
 
-  void partition(class Brain*);
-  void balance(class Brain*);
-  void comm_init(class Brain*);
+  void partition(class VirtualBrain*);
+  void balance(class VirtualBrain*);
+  void comm_init(class VirtualBrain*);
 
-  void forward_comm(class Brain*);
-  void forward_pack(class Brain*, int);
-  void forward_unpack(class Brain*, int);
+  void forward_comm(class VirtualBrain*);
+  void forward_pack(class VirtualBrain*, int);
+  void forward_unpack(class VirtualBrain*, int);
 
-  void reverse_comm(class Brain*);
-  void reverse_pack(class Brain*, int);
-  void reverse_unpack(class Brain*, int);
+  void reverse_comm(class VirtualBrain*);
+  void reverse_pack(class VirtualBrain*, int);
+  void reverse_unpack(class VirtualBrain*, int);
 
-  void allocations(class Brain*);
+  void allocations(class VirtualBrain*);
 
   int comm_side[6];
   //double *send_buf,*recv_buf;
@@ -44,10 +34,8 @@ class Comm {
   string b_dim; // balance dimension: x,y, or z
 
  private:
-  int find_me(class Brain*, int, int, int);
+  int find_me(class VirtualBrain*, int, int, int);
 
 };
-
-}
 
 #endif

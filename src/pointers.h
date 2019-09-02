@@ -26,6 +26,16 @@ typedef int64_t tagint;
 //#define TAGINT_FORMAT "%d"
 //typedef int32_t tagint;
 
+// union data struct for packing 32-bit and 64-bit ints into double bufs
+// this avoids aliasing issues by having 2 pointers (double,int)
+union ubuf {
+  double d;
+  int64_t i;
+  ubuf(double arg) : d(arg) {}
+  ubuf(int64_t arg) : i(arg) {}
+  ubuf(int arg) : i(arg) {}
+};
+
 const string flog = "log.braimmu";
 
 enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
@@ -37,11 +47,12 @@ enum{XLO,XHI,YLO,YHI,ZLO,ZHI};
 enum{mic = 0,neu,sAb,fAb,ast,phr,tau,cir, num_agents}; // ast,ilb1,il6,tnf
 const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","phr","tau","cir"}; // "ilb1","il6","tnf"
 
-/// voxel types
-const int EMP_type = 0; // Empty space type
-const int CSF_type = 1; // Cerebrospinal fluid type
-const int WM_type = 2; // White matter parenchyma type
-const int GM_type = 3; // Gray matter parenchyma type
+/// voxel tissue types
+// EMP : Empty space
+// CSF : Cerebrospinal fluid
+// WM : White matter parenchyma
+// GM : Grey matter parenchyma
+enum{EMP = 0,CSF,WM,GM, num_types};
 
 const int ndim = 3; // number of dimensions (3D)
 }

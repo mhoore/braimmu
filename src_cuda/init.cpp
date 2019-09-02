@@ -1,15 +1,8 @@
-#include <mpi.h>
-#include <vector>
-#include "math.h"
-
-#include "pointers.h"
-#include "brain.h"
+#include "virtualbrain.h"
 #include "init.h"
 
-#include <stdint.h>
-
 using namespace std;
-using namespace brain_NS;
+using namespace ns_connectome;
 
 #define PI 3.141592653589793
 
@@ -22,7 +15,7 @@ Init::~Init() {
 }
 
 /* ----------------------------------------------------------------------*/
-void Init::setup(Brain *brn) {
+void Init::setup(VirtualBrain *brn) {
   int me = brn->me;
 
   if (mri_arg.size() > 0)
@@ -59,7 +52,7 @@ void Init::setup(Brain *brn) {
 /* ----------------------------------------------------------------------
  * Read all mri files, respectively in the order of input
  * ----------------------------------------------------------------------*/
-void Init::read_mri(Brain *brn) {
+void Init::read_mri(VirtualBrain *brn) {
   // set the main nifti image based on the first mri input
   brn->nim = nifti_image_read(mri_arg[0][1].c_str(),1);
 
@@ -116,7 +109,7 @@ void Init::read_mri(Brain *brn) {
 /* ----------------------------------------------------------------------
  * Print important properties of MRI data file
  * ----------------------------------------------------------------------*/
-void Init::print_mri_properties(Brain *brn, nifti_image *nim, string fname) {
+void Init::print_mri_properties(VirtualBrain *brn, nifti_image *nim, string fname) {
   ofstream logfile;
   logfile.open (flog, ios::app);
 
@@ -175,7 +168,7 @@ void Init::print_mri_properties(Brain *brn, nifti_image *nim, string fname) {
 /* ----------------------------------------------------------------------
  * Set boundaries, find the total number of voxels
  * ----------------------------------------------------------------------*/
-void Init::boundaries(Brain *brn) {
+void Init::boundaries(VirtualBrain *brn) {
   double vlen = brn->vlen;
 
   auto &npart = brn->npart;
@@ -210,7 +203,7 @@ void Init::boundaries(Brain *brn) {
 /* ----------------------------------------------------------------------
  * Set local and ghost voxels for each partition
  * ----------------------------------------------------------------------*/
-void Init::voxels(Brain *brn, int allocated) {
+void Init::voxels(VirtualBrain *brn, int allocated) {
   tagint nvoxel;
   int nlocal,nghost,nall;
   double pos[3];
@@ -340,7 +333,7 @@ void Init::voxels(Brain *brn, int allocated) {
 /* ----------------------------------------------------------------------
  * Find the tag of a voxel from its global coordinates i,j,k
  * ----------------------------------------------------------------------*/
-tagint Init::find_tag(Brain *brn, int i, int j, int k) {
+tagint Init::find_tag(VirtualBrain *brn, int i, int j, int k) {
   auto &nv = brn->nv;
 
   if (i < 0 || i >= nv[0])
@@ -355,7 +348,7 @@ tagint Init::find_tag(Brain *brn, int i, int j, int k) {
 }
 
 /* ----------------------------------------------------------------------*/
-void Init::allocations(Brain *brn, int allocated) {
+void Init::allocations(VirtualBrain *brn, int allocated) {
 
   for (auto &a: brn->x) {
     a.clear();
@@ -387,7 +380,7 @@ void Init::allocations(Brain *brn, int allocated) {
     a.resize(brn->nall);
   }
 
-  for (auto &a: brn->Dtau) {
+  for (auto &a: brn->prop.Dtau) {
     a.clear();
     a.resize(brn->nall);
   }
@@ -409,19 +402,19 @@ void Init::allocations(Brain *brn, int allocated) {
 /* ----------------------------------------------------------------------
  * Set constant global simulation parameters.
  * ----------------------------------------------------------------------*/
-void Init::set_parameters(Brain *brn) {
-  brn->D_sAb = brn->diff_sAb * brn->vlen_2;
-  brn->D_mic = brn->diff_mic * brn->vlen_2;
-  brn->cs = brn->sens_s * brn->vlen_2;
-  brn->cf = brn->sens_f * brn->vlen_2;
-  brn->omega_cir = 2.0 * PI / brn->tau_cir;
-  brn->Dtau_max = brn->diff_tau * brn->vlen_2;
+void Init::set_parameters(VirtualBrain *brn) {
+  brn->prop.D_sAb = brn->prop.diff_sAb * brn->vlen_2;
+  brn->prop.D_mic = brn->prop.diff_mic * brn->vlen_2;
+  brn->prop.cs = brn->prop.sens_s * brn->vlen_2;
+  brn->prop.cf = brn->prop.sens_f * brn->vlen_2;
+  brn->prop.omega_cir = 2.0 * PI / brn->prop.tau_cir;
+  brn->prop.Dtau_max = brn->prop.diff_tau * brn->vlen_2;
 }
 
 /* ----------------------------------------------------------------------
  * Define the boundaries of the system based on the mri nifti image (.nii)
  * ----------------------------------------------------------------------*/
-int Init::mri_boundaries(Brain *brn, nifti_image *nim) {
+int Init::mri_boundaries(VirtualBrain *brn, nifti_image *nim) {
   if (!nim)
     return 0;
 
@@ -465,7 +458,7 @@ int Init::mri_boundaries(Brain *brn, nifti_image *nim) {
 /* ----------------------------------------------------------------------
  * Define the system topology based on the mri nifti image (.nii)
  * ----------------------------------------------------------------------*/
-void Init::mri_topology(Brain *brn, nifti_image *nim) {
+void Init::mri_topology(VirtualBrain *brn, nifti_image *nim) {
   if (!nim)
     return;
 
@@ -476,7 +469,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   auto &group = brn->group;
   auto &agent = brn->agent;
 
-  auto &Dtau = brn->Dtau;
+  auto &Dtau = brn->prop.Dtau;
 
   double vlen_1 = brn->vlen_1;
 
@@ -492,7 +485,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
   fill(type.begin(),type.end(),tissue[EMP]);
   fill(group.begin(),group.end(),0);
   for (auto &a: Dtau)
-    fill(a.begin(),a.end(),brn->Dtau_max);
+    fill(a.begin(),a.end(),brn->prop.Dtau_max);
 
   /* -------------------------------------------------------
    * set from restart
@@ -803,7 +796,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
         else if (!mri_arg[tis][0].compare("rgb")) {
           for (int j=0; j<3; j++)
             if (rgb_prop[j][i] > thres_val)
-              Dtau[j][i] = (rgb_prop[j][i] - thres_val) * coef_rgb * brn->Dtau_max;
+              Dtau[j][i] = (rgb_prop[j][i] - thres_val) * coef_rgb * brn->prop.Dtau_max;
         }
 
       }
@@ -823,7 +816,7 @@ void Init::mri_topology(Brain *brn, nifti_image *nim) {
     }
 
     else if (type[i] & tissue[CSF])
-      Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = brn->Dtau_max;
+      Dtau[0][i] = Dtau[1][i] = Dtau[2][i] = brn->prop.Dtau_max;
 
     //printf("HERE %li max = %g , %g %g %g \n",
       //     i, brn->Dtau_max, Dtau[0][i],Dtau[1][i],Dtau[2][i]);

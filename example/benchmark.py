@@ -53,8 +53,8 @@ Nproc = ( ( 1, 1,  1, 1),
           ( 8, 2,  4, 1),
           (12, 2,  6, 1) )
 
-method = ('cuda', 'cuda_newton')
-exes = ('../src_cuda/braimmu.exe', '../src_cuda/braimmu.exe')
+method = ('cuda', )
+exes = ('../src_cuda/braimmu.exe', )
 
 def main():
     
@@ -74,7 +74,7 @@ def main():
             subst = 'partition %i %i %i \n' % (nx,ny,nz)
             
             # setup the partitions in the input file
-            fname = './in.' + method[sim]
+            fname = './in.run'
             replace(fname,'partition', subst)
 
             print(ncore, nx,ny,nz, method[sim])

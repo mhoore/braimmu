@@ -1,40 +1,26 @@
 #ifndef INPUT_H
 #define INPUT_H
 
-#include <vector>
-#include "stdio.h"
-#include "stdlib.h"
-#include <iostream>
-#include <fstream>
-#include <iomanip>
-#include <string>
-#include <sstream>
-
 #include "pointers.h"
-#include "brain.h"
-
-#include "nifti1.h"
-#include "nifti1_io.h"
-#include "znzlib.h"
 
 using namespace std;
-namespace brain_NS {
+using namespace ns_connectome;
 
 class Input {
  public:
   Input();
   ~Input();
 
-  void file(const char*, class Brain*);
+  void file(const char*, class VirtualBrain*);
   void parse(string);
-  void execute_command(class Brain*);
+  void execute_command(class VirtualBrain*);
 
-  int read_parameters(class Brain*);
-  void read_mri(class Brain*);
-  void read_region(class Brain*);
-  int read_restart(class Brain*);
-  int read_statistics(class Brain*);
-  int read_dump(class Brain*);
+  int read_parameters(class VirtualBrain*);
+  void read_mri(class VirtualBrain*);
+  void read_region(class VirtualBrain*);
+  int read_restart(class VirtualBrain*);
+  int read_statistics(class VirtualBrain*);
+  int read_dump(class VirtualBrain*);
   int find_agent(string);
 
   ifstream fr;
@@ -42,10 +28,8 @@ class Input {
   int narg;
   string command;
 
-  vector<string> *arg;
+  vector<string> arg;
 
 };
-
-}
 
 #endif

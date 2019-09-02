@@ -18,8 +18,9 @@ Comm::Comm() {
 
 /* ----------------------------------------------------------------------*/
 Comm::~Comm() {
-  destroy(send_buf);
-  destroy(recv_buf);
+  send_buf.clear();
+  recv_buf.clear();
+
 }
 
 /* ----------------------------------------------------------------------
@@ -30,14 +31,14 @@ Comm::~Comm() {
 void Comm::partition(Brain *brn) {
   double pos[3],POS[3],DX[3];
 
-  int *npart = brn->npart;
+  auto &npart = brn->npart;
 
-  double *boxlo = brn->boxlo;
+  auto &boxlo = brn->boxlo;
 
-  double *xlo = brn->xlo;
-  double *xhi = brn->xhi;
+  auto &xlo = brn->xlo;
+  auto &xhi = brn->xhi;
 
-  double *lbox = brn->lbox;
+  auto &lbox = brn->lbox;
 
   for (int i=0; i<3; i++)
     DX[i] = lbox[i] / npart[i];
@@ -99,36 +100,29 @@ void Comm::balance(Brain *brn) {
 
   MPI_Comm world = brn->world;
 
-  int *nv = brn->nv;
+  auto &nv = brn->nv;
 
-  int *npart = brn->npart;
-  double *xlo = brn->xlo;
-  double *xhi = brn->xhi;
+  auto &npart = brn->npart;
+  auto &xlo = brn->xlo;
+  auto &xhi = brn->xhi;
 
   int nall = brn->nall;
 
+  auto &tissue = brn->tissue;
   auto &type = brn->type;
   auto &is_loc = brn->is_loc;
 
   nloop_loc = 0;
   for (int i=0; i<nall; i++) {
-    if (type[i] == EMP_type) continue;
+    if (type[i] & tissue[EMP]) continue;
     if (!is_loc[i]) continue;
     nloop_loc++;
   }
 
   int dsize = 3; // data size for communication; nloop, xlo, and xhi
 
-  int *rcounts = NULL;
-  int *displs = NULL;
-  double *r_buf = NULL;
-
-  create(rcounts,nproc,"comm:rcounts");
-  create(displs,nproc,"comm:displs");
-  create(r_buf,nproc*dsize,"comm:r_buf");
-
-  double *s_buf = NULL;
-  create(s_buf,dsize,"comm:s_buf");
+  vector<int> rcounts(nproc), displs(nproc);
+  vector<double> r_buf(nproc*dsize), s_buf(dsize);
 
   // pack
   s_buf[0] = ubuf(nloop_loc).d;
@@ -142,21 +136,16 @@ void Comm::balance(Brain *brn) {
     offset += rcounts[i];
   }
 
-  MPI_Allgatherv(s_buf,dsize,MPI_DOUBLE,r_buf,rcounts,displs,MPI_DOUBLE,world);
+  MPI_Allgatherv(&s_buf[0],dsize,MPI_DOUBLE,
+                 &r_buf[0],&rcounts[0],&displs[0],MPI_DOUBLE,world);
 
-  destroy(rcounts);
-  destroy(displs);
-
-  destroy(s_buf);
+  rcounts.clear();
+  displs.clear();
+  s_buf.clear();
 
   // unpack
-  int *nloop = NULL;
-  double *xlo_all = NULL;
-  double *xhi_all = NULL;
-
-  create(nloop,nproc,"comm:nloop");
-  create(xlo_all,nproc,"comm:xlo_all");
-  create(xhi_all,nproc,"comm:xhi_all");
+  vector<int> nloop(nproc);
+  vector<double> xlo_all(nproc), xhi_all(nproc);
 
   int c = 0;
   for (int i=0; i<nproc; i++) {
@@ -166,22 +155,10 @@ void Comm::balance(Brain *brn) {
     xhi_all[i] = r_buf[c+2];
   }
 
-  destroy(r_buf);
+  r_buf.clear();
 
-  double *nloop_sec = NULL;
-  double *xlo_sec = NULL;
-  double *xhi_sec = NULL;
-  int *n_sec = NULL;
-
-  create(nloop_sec,npart[b_flag],"comm:nloop_sec");
-  create(xlo_sec,npart[b_flag],"comm:xlo_sec");
-  create(xhi_sec,npart[b_flag],"comm:xhi_sec");
-  create(n_sec,npart[b_flag],"comm:n_sec");
-
-  for (int i=0; i<npart[b_flag]; i++) {
-    n_sec[i] = 0;
-    nloop_sec[i] = 0.0;
-  }
+  vector<double> nloop_sec(npart[b_flag],0.0), xlo_sec(npart[b_flag]), xhi_sec(npart[b_flag]);
+  vector<int> n_sec(npart[b_flag],0);
 
   int sid;
   for (int k=0; k<npart[2]; k++) {
@@ -213,11 +190,7 @@ void Comm::balance(Brain *brn) {
 
   double lx, lx_new, correction;
 
-  double *xlo_new = NULL;
-  double *xhi_new = NULL;
-
-  create(xlo_new,npart[b_flag],"comm:xlo_new");
-  create(xhi_new,npart[b_flag],"comm:xhi_new");
+  vector<double> xlo_new(npart[b_flag]), xhi_new(npart[b_flag]);
 
   double dum = static_cast<double>(nv[b_flag]) / brn->nvoxel * brn->vlen;
 
@@ -261,17 +234,17 @@ void Comm::balance(Brain *brn) {
     printf("Balance: unevenness ratio (max/min) before balancing = %g \n",
            (float)(nloop_max)/nloop_min);
 
-  destroy(nloop);
-  destroy(xlo_all);
-  destroy(xhi_all);
+  nloop.clear();
+  xlo_all.clear();
+  xhi_all.clear();
 
-  destroy(nloop_sec);
-  destroy(xlo_sec);
-  destroy(xhi_sec);
-  destroy(n_sec);
+  nloop_sec.clear();
+  xlo_sec.clear();
+  xhi_sec.clear();
+  n_sec.clear();
 
-  destroy(xlo_new);
-  destroy(xhi_new);
+  xlo_new.clear();
+  xhi_new.clear();
 
 }
 
@@ -282,7 +255,7 @@ void Comm::balance(Brain *brn) {
  * communication.
  * ----------------------------------------------------------------------*/
 void Comm::comm_init(Brain *brn) {
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   // set buffer size for each direction of communication
   int buf_size[3];
@@ -305,15 +278,18 @@ void Comm::comm_init(Brain *brn) {
 
 /* ----------------------------------------------------------------------*/
 void Comm::allocations(Brain *brn) {
-  create(send_buf,max_buf_size,"send_buf");
-  create(recv_buf,max_buf_size,"recv_buf");
+  send_buf.clear();
+  send_buf.resize(max_buf_size);
+  recv_buf.clear();
+  recv_buf.resize(max_buf_size);
+
 }
 
 /* ----------------------------------------------------------------------
  * Find the rank of a partition, with coordinates i,j,k
  * ----------------------------------------------------------------------*/
 int Comm::find_me(Brain *brn, int i, int j, int k) {
-  int *npart = brn->npart;
+  auto &npart = brn->npart;
 
   if (i < 0 || i >= npart[0])
     return -1;
@@ -337,13 +313,13 @@ void Comm::forward_comm(Brain *brn) {
 
   ctag = 0;
 
-  /// X direction
+  /// XLO direction
   if (comm_side[XHI] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_recv);
 
   if (comm_side[XLO] >= 0) {
     forward_pack(brn,XLO);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_send);
   }
 
   if (comm_side[XHI] >= 0) {
@@ -354,13 +330,13 @@ void Comm::forward_comm(Brain *brn) {
   if (comm_side[XLO] >= 0)
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
-  /// Y direction
+  /// YLO direction
   if (comm_side[YHI] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_recv);
 
   if (comm_side[YLO] >= 0) {
     forward_pack(brn,YLO);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_send);
   }
 
   if (comm_side[YHI] >= 0) {
@@ -372,13 +348,13 @@ void Comm::forward_comm(Brain *brn) {
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
 
-  /// Z direction
+  /// ZLO direction
   if (comm_side[ZHI] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_recv);
 
   if (comm_side[ZLO] >= 0) {
     forward_pack(brn,ZLO);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_send);
   }
 
   if (comm_side[ZHI] >= 0) {
@@ -389,13 +365,68 @@ void Comm::forward_comm(Brain *brn) {
   if (comm_side[ZLO] >= 0)
     MPI_Wait(&req_send,MPI_STATUS_IGNORE);
 
+  /// newton_flux no: useful for GPU parallelization
+  if (brn->newton_flux) return;
+
+  /// XHI direction
+  if (comm_side[XLO] >= 0)
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_recv);
+
+  if (comm_side[XHI] >= 0) {
+    forward_pack(brn,XHI);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[XLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,XLO);
+  }
+
+  if (comm_side[XHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+  /// YHI direction
+  if (comm_side[YLO] >= 0)
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_recv);
+
+  if (comm_side[YHI] >= 0) {
+    forward_pack(brn,YHI);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[YLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,YLO);
+  }
+
+  if (comm_side[YHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
+
+  /// ZHI direction
+  if (comm_side[ZLO] >= 0)
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_recv);
+
+  if (comm_side[ZHI] >= 0) {
+    forward_pack(brn,ZHI);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_send);
+  }
+
+  if (comm_side[ZLO] >= 0) {
+    MPI_Wait(&req_recv,MPI_STATUS_IGNORE);
+    forward_unpack(brn,ZLO);
+  }
+
+  if (comm_side[ZHI] >= 0)
+    MPI_Wait(&req_send,MPI_STATUS_IGNORE);
+
 }
 
 /* ----------------------------------------------------------------------
  * Packing the buffer for forward communication
  * ----------------------------------------------------------------------*/
 void Comm::forward_pack(Brain *brn, int flag) {
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   tagint c = 0;
 
@@ -477,7 +508,7 @@ void Comm::forward_pack(Brain *brn, int flag) {
  * Unpacking the buffer for forward communication
  * ----------------------------------------------------------------------*/
 void Comm::forward_unpack(Brain *brn, int flag) {
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   tagint c = 0;
 
@@ -568,11 +599,11 @@ void Comm::reverse_comm(Brain *brn) {
 
   /// X direction
   if (comm_side[XLO] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XLO],ctag,world,&req_recv);
 
   if (comm_side[XHI] >= 0) {
     reverse_pack(brn,XHI);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[XHI],ctag,world,&req_send);
   }
 
   if (comm_side[XLO] >= 0) {
@@ -585,11 +616,11 @@ void Comm::reverse_comm(Brain *brn) {
 
   /// Y direction
   if (comm_side[YLO] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YLO],ctag,world,&req_recv);
 
   if (comm_side[YHI] >= 0) {
     reverse_pack(brn,YHI);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[YHI],ctag,world,&req_send);
   }
 
   if (comm_side[YLO] >= 0) {
@@ -603,11 +634,11 @@ void Comm::reverse_comm(Brain *brn) {
 
   /// Z direction
   if (comm_side[ZLO] >= 0)
-    MPI_Irecv(recv_buf,max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_recv);
+    MPI_Irecv(&recv_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZLO],ctag,world,&req_recv);
 
   if (comm_side[ZHI] >= 0) {
     reverse_pack(brn,ZHI);
-    MPI_Isend(send_buf,max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_send);
+    MPI_Isend(&send_buf[0],max_buf_size,MPI_DOUBLE,comm_side[ZHI],ctag,world,&req_send);
   }
 
   if (comm_side[ZLO] >= 0) {
@@ -623,7 +654,7 @@ void Comm::reverse_comm(Brain *brn) {
  * Packing the buffer for reverse communication
  * ----------------------------------------------------------------------*/
 void Comm::reverse_pack(Brain *brn, int flag) {
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   tagint c = 0;
 
@@ -705,7 +736,7 @@ void Comm::reverse_pack(Brain *brn, int flag) {
  * Unpacking the buffer for reverse communication
  * ----------------------------------------------------------------------*/
 void Comm::reverse_unpack(Brain *brn, int flag) {
-  int *nvl = brn->nvl;
+  auto &nvl = brn->nvl;
 
   tagint c = 0;
 

@@ -1,7 +1,8 @@
+*** LOG FILE ***
 ## Input file: cuda with newton flux
 ## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
 
-partition 2 6 1 
+partition 2 4 1 
 num_conn_max 10 # maximum number of bond connections
 
 ## special for cuda
@@ -60,12 +61,82 @@ read_mri group ../base/voi.nii 0 0
 
 read_mri rgb ../base/rgb.nii 0 255
 
-balance y 20
+#balance y 20
 
 ## outputs
-#dump mri 1000 dump.cuda. mic neu sAb fAb ast phr tau type group
-#statistics 1000 stat.cuda.dat
+dump mri 200 dump. mic neu sAb fAb ast phr tau type group
+statistics 200 stat.dat
 
 log 20
 run 200
 setup
+##################### 
+Reading NIFTI image ../base/wm.nii: 
+ndim = 3 
+dim[1] = 193, pixdim[i] = 1 
+dim[2] = 229, pixdim[i] = 1 
+dim[3] = 193, pixdim[i] = 1 
+nvox = 8530021 
+nbyper = 2 
+datatype = 4 
+xyz_units = 2, time_units = 8 
+nifti_type = 1 
+description: mnc2nii mni_icbm152_nlin_sym_09c/mni_icbm152_wm_tal_nlin_sym_09c.mnc mni_icbm15 
+##################### 
+##################### 
+Reading NIFTI image ../base/gm.nii: 
+ndim = 3 
+dim[1] = 193, pixdim[i] = 1 
+dim[2] = 229, pixdim[i] = 1 
+dim[3] = 193, pixdim[i] = 1 
+nvox = 8530021 
+nbyper = 2 
+datatype = 4 
+xyz_units = 2, time_units = 8 
+nifti_type = 1 
+description: mnc2nii mni_icbm152_nlin_sym_09c/mni_icbm152_gm_tal_nlin_sym_09c.mnc mni_icbm15 
+##################### 
+##################### 
+Reading NIFTI image ../base/csf.nii: 
+ndim = 3 
+dim[1] = 193, pixdim[i] = 1 
+dim[2] = 229, pixdim[i] = 1 
+dim[3] = 193, pixdim[i] = 1 
+nvox = 8530021 
+nbyper = 2 
+datatype = 4 
+xyz_units = 2, time_units = 8 
+nifti_type = 1 
+description: mnc2nii mni_icbm152_nlin_sym_09c/mni_icbm152_csf_tal_nlin_sym_09c.mnc mni_icbm1 
+##################### 
+##################### 
+Reading NIFTI image ../base/voi.nii: 
+ndim = 3 
+dim[1] = 181, pixdim[i] = 1 
+dim[2] = 217, pixdim[i] = 1 
+dim[3] = 181, pixdim[i] = 1 
+nvox = 7109137 
+nbyper = 1 
+datatype = 2 
+xyz_units = 2, time_units = 0 
+nifti_type = 1 
+description:  
+##################### 
+##################### 
+Reading NIFTI image ../base/rgb.nii: 
+ndim = 3 
+dim[1] = 181, pixdim[i] = 1 
+dim[2] = 217, pixdim[i] = 1 
+dim[3] = 181, pixdim[i] = 1 
+nvox = 7109137 
+nbyper = 3 
+datatype = 128 
+xyz_units = 0, time_units = 0 
+nifti_type = 1 
+description:  
+##################### 
+
+Final step: 
+Total steps = 200 
+Tot time (sec) = 24.1085 
+Speed (steps/s)= 10.0994 +- 2.49424 

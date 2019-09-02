@@ -1,13 +1,8 @@
-#include <mpi.h>
-#include <vector>
-#include "math.h"
-
-#include "pointers.h"
-#include "brain.h"
+#include "virtualbrain.h"
 #include "region.h"
 
 using namespace std;
-using namespace brain_NS;
+using namespace ns_connectome;
 
 /* ---------------------------------------------------------------------- */
 Region::Region() {
@@ -26,7 +21,7 @@ Region::~Region() {
 /* ----------------------------------------------------------------------
  * Apply all the regions, respectively in the order of input
  * ----------------------------------------------------------------------*/
-void Region::apply_regions(Brain *brn) {
+void Region::apply_regions(VirtualBrain *brn) {
   for (int i=0; i<reg_arg.size(); i++) {
     int narg = reg_arg[i].size();
 
@@ -64,7 +59,7 @@ void Region::apply_regions(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-int Region::sphere(Brain *brn, vector<string> arg) {
+int Region::sphere(VirtualBrain *brn, vector<string> arg) {
   int narg = arg.size();
 
   int nall = brn->nall;
@@ -137,7 +132,7 @@ int Region::sphere(Brain *brn, vector<string> arg) {
 }
 
 /* ----------------------------------------------------------------------*/
-int Region::block(Brain *brn, vector<string> arg) {
+int Region::block(VirtualBrain *brn, vector<string> arg) {
   int narg = arg.size();
 
   int nall = brn->nall;

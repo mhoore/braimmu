@@ -1,26 +1,19 @@
-#include <mpi.h>
-#include <vector>
-#include "math.h"
-
-#include "pointers.h"
-#include "brain.h"
+#include "virtualbrain.h"
 #include "input.h"
 
 using namespace std;
-using namespace brain_NS;
+using namespace ns_connectome;
 
 /* ---------------------------------------------------------------------- */
 Input::Input() {
-  arg = new vector<string>();
 }
 
 /* ----------------------------------------------------------------------*/
 Input::~Input() {
-  delete arg;
 }
 
 /* ----------------------------------------------------------------------*/
-void Input::file(const char *fname, class Brain *brn) {
+void Input::file(const char *fname, class VirtualBrain *brn) {
   string str;
   string comment ("#");
 
@@ -57,16 +50,16 @@ void Input::parse(string str) {
 
   buf >> command;
 
-  arg->clear();
+  arg.clear();
   for(string word; buf >> word;)
-    arg->push_back(word);
+    arg.push_back(word);
 
-  narg = arg->size();
+  narg = arg.size();
 
 }
 
 /* ----------------------------------------------------------------------*/
-void Input::execute_command(Brain *brn) {
+void Input::execute_command(VirtualBrain *brn) {
 
   /* Command: timestep - the timestep of the simulation.
    * syntax: timestep dt
@@ -78,7 +71,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->dt = stof((*arg)[0]);
+    brn->dt = stof(arg[0]);
   }
 
   /* Command: nevery - the period of long-term communications
@@ -92,7 +85,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->nevery = stoi((*arg)[0]);
+    brn->nevery = stoi(arg[0]);
   }
 
   /* Command: box - setting the simulation box boundaries.
@@ -105,12 +98,12 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->boxlo[0] = stof((*arg)[0]);
-    brn->boxhi[0] = stof((*arg)[1]);
-    brn->boxlo[1] = stof((*arg)[2]);
-    brn->boxhi[1] = stof((*arg)[3]);
-    brn->boxlo[2] = stof((*arg)[4]);
-    brn->boxhi[2] = stof((*arg)[5]);
+    brn->boxlo[0] = stof(arg[0]);
+    brn->boxhi[0] = stof(arg[1]);
+    brn->boxlo[1] = stof(arg[2]);
+    brn->boxhi[1] = stof(arg[3]);
+    brn->boxlo[2] = stof(arg[4]);
+    brn->boxhi[2] = stof(arg[5]);
   }
 
   /* Command: voxel_size - setting the lattice unit length.
@@ -123,7 +116,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->vlen = stof((*arg)[0]);
+    brn->vlen = stof(arg[0]);
   }
 
   /* Command: partition - setting the partitioning for parallel
@@ -138,9 +131,9 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->npart[0] = stoi((*arg)[0]);
-    brn->npart[1] = stoi((*arg)[1]);
-    brn->npart[2] = stoi((*arg)[2]);
+    brn->npart[0] = stoi(arg[0]);
+    brn->npart[1] = stoi(arg[1]);
+    brn->npart[2] = stoi(arg[2]);
   }
 
   else if (!command.compare("num_conn_max")) {
@@ -149,7 +142,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->num_conn_max = stoi((*arg)[0]);
+    brn->num_conn_max = stoi(arg[0]);
   }
 
   /* Command: parameters - setting the initial values of the parameters.
@@ -182,8 +175,8 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    if (!(*arg)[0].compare("yes")) brn->newton_flux = 1;
-    else if (!(*arg)[0].compare("no")) brn->newton_flux = 0;
+    if (!arg[0].compare("yes")) brn->newton_flux = 1;
+    else if (!arg[0].compare("no")) brn->newton_flux = 0;
     else {
       printf("Error: newton_flux keyword not recognized! \n");
       exit(1);
@@ -279,7 +272,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->Nlog = stoi((*arg)[0]);
+    brn->Nlog = stoi(arg[0]);
   }
 
   else if (!command.compare("run")) {
@@ -288,7 +281,7 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->Nrun = stoi((*arg)[0]);
+    brn->Nrun = stoi(arg[0]);
   }
 
   else if (!command.compare("balance")) {
@@ -297,8 +290,8 @@ void Input::execute_command(Brain *brn) {
       exit(1);
     }
 
-    brn->comm->b_dim = (*arg)[0];
-    brn->comm->b_itr = stoi((*arg)[1]);
+    brn->comm->b_dim = arg[0];
+    brn->comm->b_itr = stoi(arg[1]);
   }
 
   //else if (!command.compare("region"))
@@ -313,35 +306,35 @@ void Input::execute_command(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-int Input::read_parameters(Brain *brn) {
+int Input::read_parameters(VirtualBrain *brn) {
   int c = 0;
 
   do {
     if (c+1 >= narg)
       return 0;
-    if (!(*arg)[c].compare("diff_sAb")) brn->diff_sAb = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("kp")) brn->kp = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("kn")) brn->kn = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("ds")) brn->ds = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("df")) brn->df = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("es")) brn->es = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("diff_mic")) brn->diff_mic = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("sens_s")) brn->sens_s = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("sens_f")) brn->sens_f = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("Ha")) brn->Ha = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("ka")) brn->ka = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("dnt")) brn->dnt = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("ktau")) brn->ktau = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("kphi")) brn->kphi = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("ephi")) brn->ephi = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("C_cir")) {
-      brn->C_cir = stof((*arg)[c+1]);
-      brn->init_val[cir] = brn->C_cir;
+    if (!arg[c].compare("diff_sAb")) brn->prop.diff_sAb = stof(arg[c+1]);
+    else if (!arg[c].compare("kp")) brn->prop.kp = stof(arg[c+1]);
+    else if (!arg[c].compare("kn")) brn->prop.kn = stof(arg[c+1]);
+    else if (!arg[c].compare("ds")) brn->prop.ds = stof(arg[c+1]);
+    else if (!arg[c].compare("df")) brn->prop.df = stof(arg[c+1]);
+    else if (!arg[c].compare("es")) brn->prop.es = stof(arg[c+1]);
+    else if (!arg[c].compare("diff_mic")) brn->prop.diff_mic = stof(arg[c+1]);
+    else if (!arg[c].compare("sens_s")) brn->prop.sens_s = stof(arg[c+1]);
+    else if (!arg[c].compare("sens_f")) brn->prop.sens_f = stof(arg[c+1]);
+    else if (!arg[c].compare("Ha")) brn->prop.Ha = stof(arg[c+1]);
+    else if (!arg[c].compare("ka")) brn->prop.ka = stof(arg[c+1]);
+    else if (!arg[c].compare("dnt")) brn->prop.dnt = stof(arg[c+1]);
+    else if (!arg[c].compare("ktau")) brn->prop.ktau = stof(arg[c+1]);
+    else if (!arg[c].compare("kphi")) brn->prop.kphi = stof(arg[c+1]);
+    else if (!arg[c].compare("ephi")) brn->prop.ephi = stof(arg[c+1]);
+    else if (!arg[c].compare("C_cir")) {
+      brn->prop.C_cir = stof(arg[c+1]);
+      brn->init_val[cir] = brn->prop.C_cir;
     }
-    else if (!(*arg)[c].compare("c_cir")) brn->c_cir = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("tau_cir")) brn->tau_cir = stof((*arg)[c+1]);
-    else if (!(*arg)[c].compare("diff_tau")) brn->diff_tau = stof((*arg)[c+1]);
-    else if (find_agent((*arg)[c]) >= 0) brn->init_val[find_agent((*arg)[c])] = stof((*arg)[c+1]);
+    else if (!arg[c].compare("c_cir")) brn->prop.c_cir = stof(arg[c+1]);
+    else if (!arg[c].compare("tau_cir")) brn->prop.tau_cir = stof(arg[c+1]);
+    else if (!arg[c].compare("diff_tau")) brn->prop.diff_tau = stof(arg[c+1]);
+    else if (find_agent(arg[c]) >= 0) brn->init_val[find_agent(arg[c])] = stof(arg[c+1]);
     else return 0;
 
     c += 2;
@@ -353,29 +346,29 @@ int Input::read_parameters(Brain *brn) {
 /* ----------------------------------------------------------------------
  * Read MRI image (.nii) to define the spatial domain of the simulation.
  * ----------------------------------------------------------------------*/
-void Input::read_mri(Brain *brn) {
+void Input::read_mri(VirtualBrain *brn) {
   brn->init->mri_arg.push_back(vector<string>());
   int i = brn->init->mri_arg.size() - 1;
 
   for (int j=0; j<narg; j++)
-    brn->init->mri_arg[i].push_back((*arg)[j]);
+    brn->init->mri_arg[i].push_back(arg[j]);
 
 }
 
 /* ----------------------------------------------------------------------*/
-void Input::read_region(Brain *brn) {
+void Input::read_region(VirtualBrain *brn) {
   brn->region->reg_arg.push_back(vector<string>());
   int i = brn->region->reg_arg.size() - 1;
 
   for (int j=0; j<narg; j++)
-    brn->region->reg_arg[i].push_back((*arg)[j]);
+    brn->region->reg_arg[i].push_back(arg[j]);
 
 }
 
 /* ----------------------------------------------------------------------*/
-int Input::read_restart(Brain *brn) {
-  brn->output->revery = stoi((*arg)[0]);
-  brn->output->rname = (*arg)[1];
+int Input::read_restart(VirtualBrain *brn) {
+  brn->output->revery = stoi(arg[0]);
+  brn->output->rname = arg[1];
 
   // make a clean file
   if (!brn->me) {
@@ -388,9 +381,9 @@ int Input::read_restart(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-int Input::read_statistics(Brain *brn) {
-  brn->output->severy = stoi((*arg)[0]);
-  brn->output->sname = (*arg)[1];
+int Input::read_statistics(VirtualBrain *brn) {
+  brn->output->severy = stoi(arg[0]);
+  brn->output->sname = arg[1];
 
   // make a clean file
   if (!brn->me) {
@@ -408,18 +401,14 @@ int Input::read_statistics(Brain *brn) {
 }
 
 /* ----------------------------------------------------------------------*/
-int Input::read_dump(Brain *brn) {
+int Input::read_dump(VirtualBrain *brn) {
   brn->output->dump_arg.push_back(vector<string>());
   int i = brn->output->dump_arg.size() - 1;
 
   for (int j=0; j<narg; j++)
-    brn->output->dump_arg[i].push_back((*arg)[j]);
+    brn->output->dump_arg[i].push_back(arg[j]);
 
   brn->output->do_dump = true;
-
-  //brn->output->dstyle = (*arg)[1];
-  //brn->output->devery = stoi((*arg)[0]);
-  //brn->output->dname = (*arg)[1];
 
   // make a clean file
   if ( !brn->me && !(brn->output->dump_arg[i][0].compare("txt")) ) {

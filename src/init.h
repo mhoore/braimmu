@@ -19,7 +19,7 @@
 
 namespace brain_NS {
 
-class Init : public Memory {
+class Init {
  public:
   Init();
   ~Init();
@@ -36,8 +36,6 @@ class Init : public Memory {
   int mri_boundaries(class Brain*, nifti_image*);
   void mri_topology(class Brain*, nifti_image*);
 
-  //int map(class Brain*, tagint);
-
   vector<vector<string>> mri_arg;
 
 private:
@@ -50,7 +48,7 @@ private:
   double *ptrd;
   uint8_t *ptr_rgb;
 
-  int *map; // map from voxel global id to local id
+  vector<int> map; // map from voxel global id to local id
 
 };
 
