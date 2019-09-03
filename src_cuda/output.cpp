@@ -6,7 +6,6 @@
 #include <fcntl.h> // open etc.
 
 using namespace std;
-using namespace ns_connectome;
 
 /* ---------------------------------------------------------------------- */
 Output::Output() {
@@ -42,7 +41,7 @@ void Output::lammpstrj(VirtualBrain *brn) {
 
   auto &x = brn->x;
 
-  auto &agent = brn->agent;
+  int num_agents = brn->get_num_agents();
 
   int dsize = num_agents + 6; // NOTE: the number of data packed to the buffer
   vector<int> rcounts(nproc), displs(nproc);
@@ -68,7 +67,7 @@ void Output::lammpstrj(VirtualBrain *brn) {
         send_buf[c++] = x[2][i];
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = agent[ag_id][i];
+          send_buf[c++] = brn->get_agent(ag_id,i);
       }
 
   MPI_Gather(&nlocal,1,MPI_INT,&rcounts[0],1,MPI_INT,0,world);
@@ -102,7 +101,7 @@ void Output::lammpstrj(VirtualBrain *brn) {
 
     fprintf(fw,"ITEM: ATOMS id type x y z ");
     for (int ag_id=0; ag_id<num_agents; ag_id++)
-      fprintf(fw,"%s ", ag_str[ag_id].c_str());
+      fprintf(fw,"%s ", brn->get_ag_str(ag_id).c_str());
     fprintf(fw,"\n");
 
     tagint c = 0;
@@ -144,7 +143,7 @@ void Output::restart(VirtualBrain *brn) {
 
   auto &nvl = brn->nvl;
 
-  auto &agent = brn->agent;
+  int num_agents = brn->get_num_agents();
 
   int dsize = num_agents + 3;
 
@@ -172,7 +171,7 @@ void Output::restart(VirtualBrain *brn) {
         send_buf[c++] = ubuf(group[i]).d;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = agent[ag_id][i];
+          send_buf[c++] = brn->get_agent(ag_id,i);
       }
 
   if (!me) {
@@ -274,12 +273,12 @@ void Output::statistics(VirtualBrain *brn) {
 
   int me = brn->me;
 
-  auto &agent = brn->agent;
-
   auto &tissue = brn->tissue;
   auto &type = brn->type;
 
   auto &nvl = brn->nvl;
+
+  int num_agents = brn->get_num_agents();
 
   int nr = 2; // number of regions: parenchyma and CSF
 
@@ -305,7 +304,7 @@ void Output::statistics(VirtualBrain *brn) {
           c = 1;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
-          agent_val[ag_id][c] += agent[ag_id][i];
+          agent_val[ag_id][c] += brn->get_agent(ag_id,i);
         agent_num[c]++;
       }
 
@@ -368,11 +367,12 @@ void Output::statistics_sphere(VirtualBrain *brn) {
   double vlen_1 = brn->vlen_1;
 
   auto &x = brn->x;
-  auto &agent = brn->agent;
 
   auto &nvl = brn->nvl;
 
   tagint nr = (tagint)( brn->lbox[0] * vlen_1 / 2 );
+
+  int num_agents = brn->get_num_agents();
 
   vector<vector<double>> agent_val(num_agents);
   for (auto &a: agent_val) {
@@ -394,7 +394,7 @@ void Output::statistics_sphere(VirtualBrain *brn) {
         if (c >= nr) continue;
 
         for (int ag_id=0; ag_id<num_agents; ag_id++)
-          agent_val[ag_id][c] += agent[ag_id][i];
+          agent_val[ag_id][c] += brn->get_agent(ag_id,i);
         agent_num[c]++;
       }
 
@@ -433,7 +433,7 @@ void Output::statistics_sphere(VirtualBrain *brn) {
 
     fprintf(fw,"ITEM: BIN id r ");
     for (int ag_id=0; ag_id<num_agents; ag_id++)
-      fprintf(fw,"%s ", ag_str[ag_id].c_str());
+      fprintf(fw,"%s ", brn->get_ag_str(ag_id).c_str());
     fprintf(fw,"\n");
 
     for (int i=0; i<nr; i++) {
@@ -487,8 +487,6 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 
   auto &nvl = brn->nvl;
 
-  auto &agent = brn->agent;
-
   int dsize = 3;
   tagint c = 3;
   while (c < arg.size()) {
@@ -496,7 +494,7 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
       dsize++;
     else if (!arg[c].compare("group"))
       dsize++;
-    else if (brn->input->find_agent(arg[c]) >= 0)
+    else if (brn->find_agent(arg[c]) >= 0)
       dsize++;
     else {
       printf("Error: dump argument \"%s\" unknown. \n", arg[c].c_str());
@@ -520,7 +518,7 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 
         int aid = 3;
         while (aid < arg.size()) {
-          int ag_id = brn->input->find_agent(arg[aid]);
+          int ag_id = brn->find_agent(arg[aid]);
           if (!arg[aid].compare("type")) {
             // type
             int tis;
@@ -532,7 +530,7 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
           else if (!arg[aid].compare("group"))
             send_buf[c++] = ubuf(group[i]).d;
           else if (ag_id >= 0)
-            send_buf[c++] = agent[ag_id][i];
+            send_buf[c++] = brn->get_agent(ag_id,i);
           aid++;
         }
       }
@@ -574,13 +572,13 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 
     int aid = 3;
     while (aid < arg.size()) {
-      int ag_id = brn->input->find_agent(arg[aid]);
+      int ag_id = brn->find_agent(arg[aid]);
       if (!arg[aid].compare("type"))
         fprintf(fw,"type ");
       else if (!arg[aid].compare("group"))
         fprintf(fw,"group ");
       else if (ag_id >= 0)
-        fprintf(fw,"%s ", ag_str[ag_id].c_str());
+        fprintf(fw,"%s ", brn->get_ag_str(ag_id).c_str());
       aid++;
     }
     fprintf(fw,"\n");
@@ -593,7 +591,7 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 
       int aid = 3;
       while (aid < arg.size()) {
-        int ag_id = brn->input->find_agent(arg[aid]);
+        int ag_id = brn->find_agent(arg[aid]);
         if (!arg[aid].compare("type"))
           fprintf(fw,"%i ", (int) ubuf(recv_buf[c++]).i); // type
         else if (!arg[aid].compare("group"))
@@ -615,6 +613,22 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 /* ----------------------------------------------------------------------*/
 void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
+  /// check the arguments
+  tagint c = 3;
+  while (c < arg.size()) {
+    if ( !arg[c].compare("type")
+         || !arg[c].compare("group")
+         || !arg[c].compare("me")
+         || brn->find_agent(arg[c]) >= 0 )
+      c++;
+    else if (brn->dump_specific(arg))
+        return;
+    else {
+      printf("Error: dump argument \"%s\" unknown. \n", arg[c].c_str());
+      exit(1);
+    }
+  }
+
   MPI_Comm world = brn->world;
 
   int me = brn->me;
@@ -630,32 +644,17 @@ void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
   auto &nvl = brn->nvl;
 
-  auto &agent = brn->agent;
-
-  auto &Dtau = brn->prop.Dtau;
-
   int dsize = 3;
-  tagint c = 3;
+  c = 3;
   while (c < arg.size()) {
     if (!arg[c].compare("type"))
       dsize++;
     else if (!arg[c].compare("group"))
       dsize++;
-    else if (!arg[c].compare("rgb")) {
-      if (c != arg.size() - 1) {
-        printf("Error: dump_mri: rgb keyword should be the last. \n");
-        exit(1);
-      }
-      dsize += 3;
-    }
     else if (!arg[c].compare("me"))
       dsize++;
-    else if (brn->input->find_agent(arg[c]) >= 0)
+    else if (brn->find_agent(arg[c]) >= 0)
       dsize++;
-    else {
-      printf("Error: dump argument \"%s\" unknown. \n", arg[c].c_str());
-      exit(1);
-    }
     c++;
   }
 
@@ -674,7 +673,7 @@ void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
         int aid = 3;
         while (aid < arg.size()) {
-          int ag_id = brn->input->find_agent(arg[aid]);
+          int ag_id = brn->find_agent(arg[aid]);
           if (!arg[aid].compare("type")) {
             int tis;
             for (tis=0; tis<num_types; tis++)
@@ -684,15 +683,10 @@ void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
           }
           else if (!arg[aid].compare("group"))
             send_buf[c++] = ubuf(group[i]).d;
-          else if (!arg[aid].compare("rgb")) {
-            send_buf[c++] = Dtau[0][i];
-            send_buf[c++] = Dtau[1][i];
-            send_buf[c++] = Dtau[2][i];
-          }
           else if (!arg[aid].compare("me"))
             send_buf[c++] = ubuf(me).d;
           else if (ag_id >= 0)
-            send_buf[c++] = agent[ag_id][i];
+            send_buf[c++] = brn->get_agent(ag_id,i);
           aid++;
         }
       }
@@ -739,40 +733,20 @@ void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
       while (aid < arg.size()) {
 
         tagint cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-3) ) );
-        int ag_id = brn->input->find_agent(arg[aid]);
-
-        //printf("proc %i: HERE1 " TAGINT_FORMAT ", " TAGINT_FORMAT " \n",
-          //     brn->me, i, cnim);
+        int ag_id = brn->find_agent(arg[aid]);
 
         if (!arg[aid].compare("type"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (!arg[aid].compare("group"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
-        else if (!arg[aid].compare("rgb")) {
-          data[cnim] = (float) recv_buf[c++];
-          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-2) ) );
-          data[cnim] = (float) recv_buf[c++];
-          cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-1) ) );
-          data[cnim] = (float) recv_buf[c++];
-        }
         else if (!arg[aid].compare("me"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;
         else if (ag_id >= 0)
           data[cnim] = (float) recv_buf[c++];
 
-        //printf("proc %i: HERE2 " TAGINT_FORMAT " \n", brn->me, i);
-
         aid++;
       }
     }
-
-    //printf("proc %i: HERE2 \n", brn->me);
-
-//if (!arg[aid].compare("me"))
-// printf("proc %i: HERE0 output itag=%i, data[%i, %i, %i, %i] = %g \n",
-//      brn->me, cnim, ii,jj,kk,aid-3, data[cnim]);
-//printf("proc %i: HERE1 output itag=%i, data[%i, %i, %i, %i] = %g \n",
-//     brn->me, itag, i,j,k,h, (float) ptr[c]);
 
     nifti_image_write(nim);
     nifti_image_free(nim);

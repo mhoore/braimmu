@@ -2,14 +2,13 @@
 #include "comm.h"
 
 using namespace std;
-using namespace ns_connectome;
 
 /* ---------------------------------------------------------------------- */
-Comm::Comm() {
+Comm::Comm(VirtualBrain *brn) {
   b_itr = 0;
   b_dim.assign("none");
 
-  comm_size = 1 + num_agents;
+  comm_size = 1 + brn->get_num_agents();
 }
 
 /* ----------------------------------------------------------------------*/
@@ -433,8 +432,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -445,8 +444,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -457,8 +456,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -469,8 +468,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -481,8 +480,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -493,8 +492,8 @@ void Comm::forward_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->agent[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_agent(ag_id,vid);
       }
   }
 
@@ -515,8 +514,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -527,8 +526,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -539,8 +538,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -551,8 +550,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -563,8 +562,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -575,8 +574,8 @@ void Comm::forward_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->agent[ag_id][vid] = recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_agent(ag_id,vid,recv_buf[c++],0);
       }
   }
 
@@ -661,8 +660,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -673,8 +672,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -685,8 +684,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -697,8 +696,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -709,8 +708,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -721,8 +720,8 @@ void Comm::reverse_pack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         send_buf[c++] = ubuf(brn->type[vid]).d;
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          send_buf[c++] = brn->deriv[ag_id][vid];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          send_buf[c++] = brn->get_deriv(ag_id,vid);
       }
   }
 
@@ -743,8 +742,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 
@@ -755,8 +754,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 
@@ -767,8 +766,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 
@@ -779,8 +778,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 
@@ -791,8 +790,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 
@@ -803,8 +802,8 @@ void Comm::reverse_unpack(VirtualBrain *brn, int flag) {
         int vid = brn->find_id(i,j,k);
 
         brn->type[vid] = static_cast<int>( ubuf(recv_buf[c++]).i );
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          brn->deriv[ag_id][vid] += recv_buf[c++];
+        for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+          brn->set_deriv(ag_id,vid,recv_buf[c++],1);
       }
   }
 

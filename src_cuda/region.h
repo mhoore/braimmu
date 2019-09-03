@@ -4,7 +4,6 @@
 #include "pointers.h"
 
 using namespace std;
-using namespace ns_connectome;
 
 class Region {
  public:

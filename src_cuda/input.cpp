@@ -2,8 +2,6 @@
 #include "input.h"
 
 using namespace std;
-using namespace ns_connectome;
-using namespace ns_geometry;
 
 /* ---------------------------------------------------------------------- */
 Input::Input() {
@@ -370,8 +368,8 @@ int Input::read_statistics(VirtualBrain *brn) {
     fw = fopen(brn->output->sname.c_str(),"w");
     fprintf(fw,"# statistics over all voxels\n");
     fprintf(fw,"# step region ");
-    for (int ag_id=0; ag_id<num_agents; ag_id++)
-      fprintf(fw,"%s ", ag_str[ag_id].c_str());
+    for (int ag_id=0; ag_id<brn->get_num_agents(); ag_id++)
+      fprintf(fw,"%s ", brn->get_ag_str(ag_id).c_str());
     fprintf(fw,"\n");
     fclose(fw);
   }

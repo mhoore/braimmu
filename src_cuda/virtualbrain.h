@@ -20,6 +20,17 @@ class VirtualBrain {
   virtual int find_agent(string) = 0;
   virtual void set_parameters() = 0;
 
+  virtual int get_num_agents() = 0;
+  virtual double get_agent(int, int) = 0;
+  virtual double get_deriv(int, int) = 0;
+  virtual string get_ag_str(int) = 0;
+  virtual void set_agent(int, int, double, bool) = 0;
+  virtual void set_deriv(int, int, double, bool) = 0;
+
+  virtual void mri_topology(nifti_image*) = 0;
+  virtual int dump_specific(vector<string>) = 0;
+
+
   /* ----------------------------------------------------------------------
    * Find the local voxel id from local coordinates i,j,k
    * ----------------------------------------------------------------------*/
@@ -71,9 +82,7 @@ class VirtualBrain {
 
   string scenario;
 
-  /// model parameters
-  double init_val[num_agents];
-  array<vector<double>, num_agents> agent, deriv;
+  vector<double> init_val;
 
 };
 

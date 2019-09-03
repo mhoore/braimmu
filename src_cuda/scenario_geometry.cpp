@@ -1,7 +1,6 @@
 #include "scenario_geometry.h"
 
 using namespace std;
-using namespace ns_geometry;
 
 /* ----------------------------------------------------------------------*/
 ScenarioGeometry::ScenarioGeometry(int narg, char** arg, int rk, int np) {
@@ -10,7 +9,7 @@ ScenarioGeometry::ScenarioGeometry(int narg, char** arg, int rk, int np) {
 
   MPI_Comm_split(MPI_COMM_WORLD,0,me,&world);
 
-  allocations();
+  reset();
 
   if (!me) {
     printf("Reading input, setup the system ... \n");
@@ -53,7 +52,7 @@ ScenarioGeometry::~ScenarioGeometry() {
 }
 
 /* ----------------------------------------------------------------------*/
-void ScenarioGeometry::allocations() {
+void ScenarioGeometry::reset() {
   nvoxel = 0;
   nlocal = nghost = nall = 0;
   step = Nrun = 0;
@@ -84,12 +83,6 @@ void ScenarioGeometry::allocations() {
   prop.dna = 0.0;
   prop.dnf = 0.0;
 
-  input = new Input();
-  init = new Init();
-  comm = new Comm();
-  output = new Output();
-  region = new Region();
-
   nim = NULL;
 
   newton_flux = 1;
@@ -99,6 +92,47 @@ void ScenarioGeometry::allocations() {
   tissue.resize(num_types);
   for (int i=0; i<num_types; i++)
     tissue[i] = 1 << i;
+
+  input = new Input();
+  init = new Init();
+  comm = new Comm(this);
+  output = new Output();
+  region = new Region();
+
+  init_val.clear();
+  init_val.resize(num_agents);
+
+  // set initial values
+  for (int ag_id=0; ag_id<num_agents; ag_id++) {
+    if (init_val[ag_id] >= 0.0)
+      for (int i=0; i<nall; i++)
+        set_agent(ag_id,i,init_val[ag_id],0);
+  }
+
+}
+
+/* ----------------------------------------------------------------------*/
+void ScenarioGeometry::allocations() {
+  for (auto &a: agent) {
+    a.clear();
+    a.resize(nall);
+  }
+
+  for (auto &a: deriv) {
+    a.clear();
+    a.resize(nall);
+  }
+
+  for (int ag_id=0; ag_id<num_agents; ag_id++) {
+    if (init_val[ag_id] >= 0.0)
+      for (int i=0; i<nall; i++)
+        set_agent(ag_id,i,init_val[ag_id],0);
+  }
+
+  // set all voxel types as EMP and groups as 0
+  fill(type.begin(),type.end(),tissue[EMP]);
+  fill(group.begin(),group.end(),0);
+
 }
 
 /* ----------------------------------------------------------------------*/
@@ -340,6 +374,7 @@ int ScenarioGeometry::set_property(string key, string val) {
   else if (find_agent(key) >= 0) init_val[find_agent(key)] = stof(val);
   else return 0;
 
+  return 1;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -351,6 +386,332 @@ int ScenarioGeometry::find_agent(string str) {
       ag_found = ag_id;
 
   return ag_found;
+}
+
+/* ----------------------------------------------------------------------*/
+void ScenarioGeometry::set_parameters() {
+  prop.D_sAb = prop.diff_sAb * vlen_2;
+  prop.D_mic = prop.diff_mic * vlen_2;
+  prop.cs = prop.sens_s * vlen_2;
+  prop.cf = prop.sens_f * vlen_2;
+  prop.omega_cir = 2.0 * PI / prop.tau_cir;
+}
+
+/* ----------------------------------------------------------------------
+ * Define the system topology based on the mri nifti image (.nii)
+ * ----------------------------------------------------------------------*/
+void ScenarioGeometry::mri_topology(nifti_image *nim) {
+  if (!nim)
+    return;
+
+  double conver_fac = 1.0;
+  if (nim->xyz_units == NIFTI_UNITS_METER)
+    conver_fac = 1.e6;
+  else if (nim->xyz_units == NIFTI_UNITS_MM)
+    conver_fac = 1.e3;
+  else if (nim->xyz_units == NIFTI_UNITS_MICRON)
+    conver_fac = 1.0;
+
+  /* -------------------------------------------------------
+   * set from restart
+   * ------------------------------------------------------- */
+  if (!init->mri_arg[0][0].compare("restart")) {
+    vector<vector<double>> v_prop(nim->dim[5]);
+    for (auto &a: v_prop) {
+      a.clear();
+      a.resize(nall);
+      fill(a.begin(), a.end(), 0.);
+    }
+
+    vector<vector<int>> n_prop(nim->dim[5]);
+    for (auto &a: n_prop) {
+      a.clear();
+      a.resize(nall);
+      fill(a.begin(), a.end(), 0);
+    }
+
+    // set pointers to data
+    if (nim->datatype == DT_UINT8)
+      ptr8 = (uint8_t *) nim->data;
+    else if (nim->datatype == DT_INT16)
+      ptr16 = (int16_t *) nim->data;
+    else if (nim->datatype == DT_INT32)
+      ptr32 = (int32_t *) nim->data;
+    else if (nim->datatype == DT_FLOAT32)
+      ptrf = (float *) nim->data;
+    else if (nim->datatype == DT_FLOAT64)
+      ptrd = (double *) nim->data;
+    else {
+      printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim->datatype);
+      exit(1);
+    }
+
+    int c = 0;
+    for (int h=0; h<nim->dim[5]; h++) {
+      for (int k=0; k<nim->dim[3]; k++) {
+        int kk = static_cast<int>( round(nim->pixdim[3] * k * conver_fac * vlen_1) );
+
+        for (int j=0; j<nim->dim[2]; j++) {
+          int jj = static_cast<int>( round(nim->pixdim[2] * j * conver_fac * vlen_1) );
+
+          for (int i=0; i<nim->dim[1]; i++) {
+            int ii = static_cast<int>( round(nim->pixdim[1] * i * conver_fac * vlen_1) );
+
+            tagint itag = init->find_tag(this,ii,jj,kk);
+            if (itag == -1) {
+              //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
+              c++;
+              continue;
+            }
+
+            int vid = init->map(itag);
+
+            // if it is in the partition
+            if (vid != -1) {
+              if (nim->datatype == DT_UINT8)
+                v_prop[h][vid] += static_cast<double>(ptr8[c]);
+              else if (nim->datatype == DT_INT16)
+                v_prop[h][vid] += static_cast<double>(ptr16[c]);
+              else if (nim->datatype == DT_INT32)
+                v_prop[h][vid] += static_cast<double>(ptr32[c]);
+              else if (nim->datatype == DT_FLOAT32)
+                v_prop[h][vid] += static_cast<double>(ptrf[c]);
+              else if (nim->datatype == DT_FLOAT64)
+                v_prop[h][vid] += static_cast<double>(ptrd[c]);
+
+              n_prop[h][vid]++;
+            }
+            c++;
+          }
+        }
+      }
+    }
+
+    string str = nim->descrip;
+    vector<string> arg;
+    arg.clear();
+
+    istringstream buf(str);
+
+    for(string word; buf >> word;)
+      arg.push_back(word);
+
+    int narg = arg.size();
+
+    if (narg != nim->dim[5]){
+      printf("Error: mri file contents do not match its description. \n");
+      exit(1);
+    }
+
+    // set voxel properties based on the nifti_image data
+    for (int i=0; i<nim->dim[5]; i++) {
+      for (int j=0; j<nall; j++) {
+
+        if (n_prop[i][j] > 0)
+          v_prop[i][j] /= n_prop[i][j];
+
+        if (!arg[i].compare("type"))
+          type[j] = static_cast<int>( round(v_prop[i][j]) ); // NOTE: this may lead to errors
+        else if (!arg[i].compare("group")) {
+          double fractpart, intpart;
+          fractpart = modf (v_prop[i][j], &intpart);
+          if (fractpart != 0) continue;
+          group[j] = static_cast<int>( v_prop[i][j] );
+        }
+        else if (find_agent(arg[i]) >= 0)
+          set_agent(find_agent(arg[i]),j,v_prop[i][j],0);
+        else {
+          printf("Error: mri file content cannot be assigned. arg = %s \n", arg[i].c_str());
+          exit(1);
+        }
+      }
+    }
+
+  }
+
+  /* -------------------------------------------------------
+   * if there is no restart, go through the nifti_image data
+   * and find the corresponding voxel.
+   * ------------------------------------------------------- */
+  else {
+    if (nim->ndim != 3) {
+      printf("Error: nifti file should have 3 dimensions. ndim = %i \n",nim->ndim);
+      exit(1);
+    }
+
+    double max_val, thres_val;
+
+    vector<double> v_prop(nall);
+    vector<int> n_prop(nall);
+
+    // go through all mri files
+    for (int tis=0; tis<init->mri_arg.size(); tis++) {
+      nifti_image *nim_tmp = NULL;
+
+      nim_tmp = nifti_image_read(init->mri_arg[tis][1].c_str(),1);
+      thres_val = stof(init->mri_arg[tis][2]);
+      max_val = stof(init->mri_arg[tis][3]);
+
+      // set pointers to data
+      if (nim_tmp->datatype == DT_UINT8)
+        ptr8 = (uint8_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_INT16)
+        ptr16 = (int16_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_INT32)
+        ptr32 = (int32_t *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_FLOAT32)
+        ptrf = (float *) nim_tmp->data;
+      else if (nim_tmp->datatype == DT_FLOAT64)
+        ptrd = (double *) nim_tmp->data;
+      else {
+        printf("Error: nifti file data type cannot be read. datatype=%i . \n", nim_tmp->datatype);
+        exit(1);
+      }
+
+      fill(v_prop.begin(), v_prop.end(), 0.);
+      fill(n_prop.begin(), n_prop.end(), 0);
+
+      // mapping correction
+      int offset3 = static_cast<int>( round(0.5 * (nim->dim[3] - nim_tmp->dim[3])) );
+      int offset2 = static_cast<int>( round(0.5 * (nim->dim[2] - nim_tmp->dim[2])) );
+      int offset1 = static_cast<int>( round(0.5 * (nim->dim[1] - nim_tmp->dim[1])) );
+
+      int c = 0;
+      for (int k=0; k<nim_tmp->dim[3]; k++) {
+        int kk = static_cast<int>( round(nim_tmp->pixdim[3] * k * conver_fac * vlen_1) );
+        kk += offset3;
+
+        for (int j=0; j<nim_tmp->dim[2]; j++) {
+          int jj = static_cast<int>( round(nim_tmp->pixdim[2] * j * conver_fac * vlen_1) );
+          jj += offset2;
+
+          for (int i=0; i<nim_tmp->dim[1]; i++) {
+            int ii = static_cast<int>( round(nim_tmp->pixdim[1] * i * conver_fac * vlen_1) );
+            ii += offset1;
+
+            tagint itag = init->find_tag(this,ii,jj,kk);
+            if (itag == -1) {
+              //printf("Warning: a tag cannot be assigned for the voxels of the mri file. \n");
+              c++;
+              continue;
+            }
+
+            int vid = init->map(itag);
+
+            double int16coef = 1.0 / (static_cast<double>(INT16_MAX)
+                                      - static_cast<double>(INT16_MIN));
+            double int32coef = 1.0 / (static_cast<double>(INT32_MAX)
+                                      - static_cast<double>(INT32_MIN));
+            // if it is in the partition
+            if (vid != -1) {
+              if (nim_tmp->datatype == DT_UINT8)
+                v_prop[vid] += static_cast<double>(ptr8[c]);
+              else if (nim_tmp->datatype == DT_INT16)
+                v_prop[vid] += ( static_cast<double>(ptr16[c] - INT16_MIN) ) * int16coef;
+              else if (nim_tmp->datatype == DT_INT32)
+                v_prop[vid] += ( static_cast<double>(ptr32[c] - INT32_MIN) ) * int32coef;
+              else if (nim_tmp->datatype == DT_FLOAT32)
+                v_prop[vid] += static_cast<double>(ptrf[c]);
+              else if (nim_tmp->datatype == DT_FLOAT64)
+                v_prop[vid] += static_cast<double>(ptrd[c]);
+
+              n_prop[vid]++;
+
+            }
+
+            c++;
+          }
+        }
+      }
+
+      // set voxel properties based on the nifti_image data
+      for (int i=0; i<nall; i++) {
+
+        if (n_prop[i] > 0)
+          v_prop[i] /= n_prop[i];
+
+        double coef = 1.0 / (1.0 - thres_val);
+        /* ----------------------------------------------------------------------
+         * criteria based on mri file
+         * setup all types and groups from a single file
+         * ----------------------------------------------------------------------*/
+        if (!init->mri_arg[tis][0].compare("all")) {
+          if (v_prop[i] <= 0) {
+            type[i] = tissue[EMP];
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              set_agent(ag_id,i,0.0,0);
+          }
+
+          else if (v_prop[i] < thres_val) {
+            type[i] = tissue[CSF];
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              set_agent(ag_id,i,0.0,0);
+          }
+
+          else if (v_prop[i] > thres_val) {
+            type[i] = tissue[GM];
+            int ag_id = find_agent("neu");
+            set_agent(ag_id,i,(v_prop[i] - thres_val) * coef * max_val,0);
+          }
+        }
+        /* ----------------------------------------------------------------------
+         * setup WM type from wm file
+         * ----------------------------------------------------------------------*/
+        else if (!init->mri_arg[tis][0].compare("wm")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = tissue[WM];
+            int ag_id = find_agent("neu");
+            set_agent(ag_id,i,(v_prop[i] - thres_val) * coef * max_val,1);
+          }
+        }
+        /* ----------------------------------------------------------------------
+         * setup GM type from gm file
+         * ----------------------------------------------------------------------*/
+        else if (!init->mri_arg[tis][0].compare("gm")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = tissue[GM];
+            int ag_id = find_agent("neu");
+            set_agent(ag_id,i,(v_prop[i] - thres_val) * coef * max_val,1);
+          }
+        }
+        /* ----------------------------------------------------------------------
+         * setup CSF type from csf file
+         * ----------------------------------------------------------------------*/
+        else if (!init->mri_arg[tis][0].compare("csf")) {
+          if (v_prop[i] > thres_val) {
+            type[i] = tissue[CSF];
+            for (int ag_id=0; ag_id<num_agents; ag_id++)
+              set_agent(ag_id,i,0.0,0);
+          }
+        }
+        /* ----------------------------------------------------------------------
+         * setup groups from group file
+         * ----------------------------------------------------------------------*/
+        else if (!init->mri_arg[tis][0].compare("group")) {
+          double fractpart, intpart;
+          fractpart = modf (v_prop[i], &intpart);
+          //printf("HERE0: %i %g \n",i,v_prop[i]);
+          if (fractpart != 0) continue;
+          group[i] = static_cast<int>( v_prop[i] );
+        }
+
+      }
+
+      nifti_image_free(nim_tmp);
+
+    }
+
+  }
+
+  // set all values to zero for EMP_type voxels
+  for (int i=0; i<nall; i++) {
+    if (type[i] & tissue[EMP]) {
+      for (int ag_id=0; ag_id<num_agents; ag_id++)
+        set_agent(ag_id,i,0.0,0);
+    }
+
+  }
+
 }
 
 /*    ////////DEBUG/////////////////////

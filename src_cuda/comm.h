@@ -4,11 +4,10 @@
 #include "pointers.h"
 
 using namespace std;
-using namespace ns_connectome;
 
 class Comm {
  public:
-  Comm();
+  Comm(class VirtualBrain*);
   ~Comm();
 
   void partition(class VirtualBrain*);

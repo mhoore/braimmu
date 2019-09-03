@@ -3,7 +3,6 @@
 #include "pointers.h"
 
 using namespace std;
-using namespace ns_connectome;
 
 /* ----------------------------------------------------------------------*/
 int main(int narg, char **arg) {
