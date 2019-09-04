@@ -20,7 +20,7 @@ import nibabel as nib
 import math
 import matplotlib.image as mpimg
 
-rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 26})
+rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' : 36})
 rc('text', usetex=True)
 rcParams.update({'figure.autolayout': True})
 
@@ -43,19 +43,22 @@ time = sys.argv[5]
 realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ","group")
-ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+AGENTS = ("mic","neu","sAb","fAb","ast","phr","tau","typ","group", "atrophy")
+#ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm [\tau]$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_tit = (r'$M$', r'$N$', r'$S$',r'$F$',r'$A$',r'$P$',r'$T$',r'$\rm Tissue$',r'$\rm VOI$',r'$D$')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$P ~{\rm (\mu M)}$',r'$T ~{\rm (\mu M)}$', r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_sgn = ('M','N','S','F','A','P','T','TYPE','VOI','atrophy')
 
 me_mic = 0
 me_neu = 1
 me_sAb = 2
 me_fAb = 3
 me_ast = 4
-me_typ = 5
-me_group = 6
-me_atrophy = 7
+me_phr = 5
+me_tau = 6
+me_typ = 7
+me_group = 8
+me_atrophy = 9
 
 x = []
 y = []
@@ -64,10 +67,19 @@ Npoints = []
 agents = []
 agents0 = []
 
+Pearson = []
+minimum = []
+maximum = []
+
+ag = []
+tis = []
+
 Nx = np.zeros(4, dtype=np.int32)
 dx = np.zeros(3, dtype=np.float32)
 lx = np.zeros(3, dtype=np.float32)
 
+###################################################################
+###################################################################
 class Subplots:
     """ Arrange subplot grid structure (square box is assumed)"""
 
@@ -99,6 +111,8 @@ class Subplots:
         self.ybeg = self.begy + self.ny*self.length_y + self.ny*self.sepy
         return self.fig.add_axes([self.xbeg,self.ybeg,self.length_x,self.length_y])
 
+###################################################################
+###################################################################
 def main():
     
     #data = np.genfromtxt(fr, dtype=np.float32, skip_header=2, max_rows = 1)
@@ -199,7 +213,6 @@ def main():
     
     #prune_data()
     
-    ag = []
     Zscore = []
     for me in range(Nx[3]-2):
         Zscore.append([])
@@ -223,60 +236,20 @@ def main():
             Zscore[me].append( (agents[i][me] - mu)/sig )
 
         ag.append( (data[:,:,:,0,me].flatten() - mu) / sig )
-    tis = data[:,:,:,0,-1].flatten()
-
-    # dummy image generation - preset
-    ########################
-    me = 0
-    me2 =1
-    
-    Pearson = []
-    for i in range(3):
-        Pearson.append(Zscore[me][i] * Zscore[me2][i] / (len(Zscore[me][i])))
-        Pearson[i][agents[i][Nx[3]-2] <= 0] = np.nan
-        
-        X = Pearson[i][~np.isnan(Pearson[i])]
-
-        if (i == 0):
-            cut_max = np.max(X)
-            cut_min = np.min(X)
-        else:
-            if (cut_max < np.max(X)):
-                cut_max = np.max(X)
-            if (cut_min > np.min(X)):
-                cut_min = np.min(X)
-    
-    if (cut_min < 0.0):
-        cut_min *= -1.0
-    if (cut_max < 0.0):
-        cut_max *= -1.0
-    if (cut_min < cut_max):
-        cut_max = cut_min
-    else:
-        cut_min = cut_max
-    cut_min *= -1.0
-    
-    #for i in range(3):
-     #   for c in range(Npoints[i]):
-      #      if (agents[i][Nx[3]-2][c] <= 0):
-               # Pearson[i][c] = cut_max - cut_min
-
-    fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
-    
-    make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,100)
-    ########################
+    tis.append(data[:,:,:,0,-1].flatten())
 
     for me in range(Nx[3]-2):
-        for me2 in range(me+1,Nx[3]-2):
+        Pearson.append([])
+        minimum.append([])
+        maximum.append([])
+        for me2 in range(0,Nx[3]-2):
+            Pearson[me].append([])
             
-            print(ag_sgn[me],ag_sgn[me2])
-            
-            Pearson = []
             for i in range(3):
-                Pearson.append(Zscore[me][i] * Zscore[me2][i] / (len(Zscore[me][i])))
-                Pearson[i][agents[i][Nx[3]-2] <= 0] = np.nan
+                Pearson[me][me2].append(Zscore[me][i] * Zscore[me2][i] / (len(Zscore[me][i])))
+                Pearson[me][me2][i][agents[i][Nx[3]-2] <= 0] = np.nan
                 
-                X = Pearson[i][~np.isnan(Pearson[i])]
+                X = Pearson[me][me2][i][~np.isnan(Pearson[me][me2][i])]
                 
                 if (i == 0):
                     cut_max = np.max(X)
@@ -297,60 +270,183 @@ def main():
                 cut_min = cut_max
             cut_min *= -1.0
             
-            #for i in range(3):
-             #   for c in range(Npoints[i]):
-              #      if (agents[i][Nx[3]-2][c] <= 0):
-                        #Pearson[i][c] = cut_max - cut_min
+            minimum[me].append(cut_min)
+            maximum[me].append(cut_max)
 
+
+    # dummy image generation - preset
+    ########################
+    me = 0
+    me2 =1
+    fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
+    #make_plot(me,me2,fw,100)
+    ########################
+
+    for me in range(Nx[3]-2):
+        for me2 in range(me+1,Nx[3]-2):
+            print("ploting", ag_sgn[me],ag_sgn[me2])
             fw = "corr/corr_" + AGENTS[me] + "_" + AGENTS[me2] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
-            
-            make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,100)
+            #make_plot(me,me2,fw,100)
     
     # combine all diagrams
     combine_plots()
 
-## plots
+###################################################################
+###################################################################
 def combine_plots():
-    me_1 = ( me_mic, me_mic, me_mic, me_neu, me_neu, me_neu, me_sAb, me_sAb, me_fAb )
-    me_2 = ( me_fAb, me_neu, me_sAb, me_ast, me_fAb, me_sAb, me_ast, me_fAb, me_ast )
-    tit  = ( r'a'  , r'b',     r'c',   r'd',   r'e',   r'f',   r'g',   r'h',   r'i' )
-    
-    fig = pl.figure(figsize=(15,15))
+    me_list = ( me_mic, me_neu, me_sAb, me_fAb, me_ast, me_tau )
 
-    n_X = 3
-    n_Y = 3
+    fig = pl.figure(figsize=(20,20))
+
+    n_X = 6
+    n_Y = 6
     
-    b_X = 0.01
-    b_Y = 0.01
+    b_X = 0.03
+    b_Y = 0.03
     
     sep_X = 0.01
     sep_Y = 0.01
     
-    l_X = 0.96 / n_X
-    l_Y = 0.96 / n_Y
+    l_X = (1.0 - sep_X * n_X - b_X ) / n_X
+    l_Y = (1.0 - sep_Y * n_Y - b_Y ) / n_Y
     
-    c= 0
     # from top left to bottom right
     for j in range(n_Y):
         y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
         for i in range(n_X):
             x_ax = b_X + (l_X + sep_X) * i
+            print("combine plot", ag_sgn[j],ag_sgn[i])
             
-            ax = fig.add_axes([x_ax, y_ax, l_X, l_Y], facecolor=(1.,1.,1.))
-            ax.set_axis_off()
-            
-            fw = "corr/corr_" + AGENTS[me_1[c]] + "_" + AGENTS[me_2[c]] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
-            im = mpimg.imread(fw)
-            ax.imshow(im)
-            
-            fig.text(x_ax + 0.01, y_ax + l_Y - 0.02, tit[c], fontsize=30)
-            
-            c += 1
+            if (i < j) :
+                ax = fig.add_axes([x_ax, y_ax, l_X, l_Y], facecolor=(1.,1.,1.))
+                cs = add_contour(fig,ax,j,i,100)
+                cbar_ax = fig.add_axes([x_ax + 0.50*l_X, y_ax + 0.05 * l_Y, 0.04*l_X, 0.4*l_Y])
+                cbar = pl.colorbar(cs,cax=cbar_ax)
+                cbar.set_ticks([minimum[i][j],0,maximum[i][j]])
+                cbar.ax.set_yticklabels([r'$\rm %.1e$' % minimum[i][j], '', r'$\rm %.1e$' % maximum[i][j]],rotation=0,fontsize=24)
+                
+            elif (i > j) :
+                ax = fig.add_axes([x_ax + 0.05*l_X, y_ax + 0.05*l_Y, 0.9*l_X, 0.9*l_Y], facecolor=(1.,1.,1.))
+                add_scatter(fig,ax,i,j)
+            else :
+                fig.text(x_ax + 0.5*l_X, y_ax + 0.5*l_Y, ag_tit[me_list[j]], ha='center', va='center', fontsize=40)
+                #ax.set_axis_off()
+                continue
+    
+    tit = r'$\rm t = %g ~(day)$' % realtime
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    lbl = r'${\rm Scatter ~plots} ~z_i ~{\rm vs.} ~z_j$'
+    fig.text(0.5,0.98,lbl, ha='center', va='center', fontsize=40)
+    
+    lbl = r'${\rm Correlation ~maps} ~{\rm corr}{(z_i, z_j)}$'
+    fig.text(0.02,0.5,lbl, ha='center', va='center', rotation=90, fontsize=40)
 
     fw = "corr/corr_all_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
     pl.savefig(fw + '.png', format = 'png', dpi=200, orientation='landscape')
     pl.close()
 
+###################################################################
+###################################################################
+def add_contour(fig,ax,me,me2,contour_levels):
+    P = Pearson[me][me2]
+    cut_min = minimum[me][me2]
+    cut_max = maximum[me][me2]
+
+    xsep = 1.
+    ysep = 1.
+    
+    mlx   = MultipleLocator(50)
+    mly   = MultipleLocator(50)
+
+    ## dim0
+    bx = lx[0] + xsep
+    by = lx[1] + ysep
+    xls = np.linspace(bx,bx+lx[1],Nx[1])
+    yls = np.linspace(by,by+lx[2],Nx[2])
+    x_gr, y_gr = np.meshgrid(xls, yls)
+    
+    # grid the data.
+    z_gr = griddata((x[0]+bx,y[0]+by), P[0], (x_gr, y_gr), method='nearest')
+    
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
+                             levels = np.linspace(cut_min,cut_max,contour_levels), extend='both')
+
+    ## dim1
+    bx = 0.0
+    by = lx[1] + ysep
+    xls = np.linspace(bx,bx+lx[0],Nx[0])
+    yls = np.linspace(by,by+lx[2],Nx[2])
+    x_gr, y_gr = np.meshgrid(xls, yls)
+    
+    # grid the data.
+    z_gr = griddata((x[1]+bx,y[1]+by), P[1], (x_gr, y_gr), method='nearest')
+
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
+                             levels = np.linspace(cut_min,cut_max,contour_levels), extend='both')
+    
+    ## dim2
+    bx = 0.0
+    by = 0.0
+    xls = np.linspace(bx,bx+lx[0],Nx[0])
+    yls = np.linspace(by,by+lx[1],Nx[1])
+    x_gr, y_gr = np.meshgrid(xls, yls)
+    
+    # grid the data.
+    z_gr = griddata((x[2]+bx,y[2]+by), P[2], (x_gr, y_gr), method='nearest')
+
+    cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
+                             levels = np.linspace(cut_min,cut_max,contour_levels), extend='both')
+    
+    ## section  lines
+    ax.plot([xsep,lx[0]],[sec[1]*dx[1], sec[1]*dx[1]],'k-',lw=0.5)
+    ax.plot([xsep,lx[0] + xsep + lx[1]],[lx[1] + ysep + sec[2]*dx[2], lx[1] + ysep + sec[2]*dx[2]],'k-',lw=0.5)
+    ax.plot([sec[0]*dx[0],sec[0]*dx[0]],[ysep,lx[1] + lx[2] + ysep],'k-',lw=0.5)
+    ax.plot([lx[0] + xsep + sec[1]*dx[1],lx[0] + xsep + sec[1]*dx[1]],[lx[1] + ysep,lx[1] + ysep + lx[2]],'k-',lw=0.5)
+
+    # scale bar
+    if (me == 0):
+        from matplotlib.patches import Rectangle
+        ax.add_patch(Rectangle((150, 205), 100, 2, alpha=1, color='k'))
+        ax.text(200,150,r'$\rm 100 ~mm$')
+
+    ax.set_xlim(0,lx[0] + lx[1] + xsep)
+    ax.set_ylim(0,lx[1] + lx[2] + ysep)
+
+    ax.xaxis.set_minor_locator(mlx)
+    ax.yaxis.set_minor_locator(mly)
+    
+    ax.set_xticks([])
+    ax.set_yticks([])
+
+    ax.set_aspect('equal')
+    
+    return cs
+
+###################################################################
+###################################################################
+def add_scatter(fig,ax,me,me2):
+    marray = np.ma.masked_where(tis[0] <= 0,tis[0]).mask
+    z11 = np.ma.array(ag[me], mask = marray).compressed()
+    z12 = np.ma.array(ag[me2], mask = marray).compressed()
+    ax.hist2d(z11, z12, bins=200, cmap='Blues',alpha=1, norm = matplotlib.colors.LogNorm())
+    
+    if (me - 1 == me2) :
+        ax.tick_params(axis='both', which='major', labelsize=20)
+        lblx = r'$z_{%s}$' % ag_sgn[me]
+        ax.set_xlabel(lblx, fontsize = 32)
+        lbly = r'$z_{%s}$' % ag_sgn[me2]
+        ax.set_ylabel(lbly, fontsize = 32)
+    else :
+        ax.set_xticks([])
+        ax.set_yticks([])
+    
+    ax.xaxis.set_minor_locator(MultipleLocator(1))
+    ax.yaxis.set_minor_locator(MultipleLocator(1))
+
+###################################################################
+###################################################################
 def prune_data():
     # find useless data
     for i in range(3):
@@ -362,8 +458,14 @@ def prune_data():
         for j in range(Nx[3]):
             agents[i][j] = np.ma.array(agents[i][j], mask = marray).compressed()
 
-## plots
-def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
+###################################################################
+###################################################################
+def make_plot(me,me2,fw,contour_levels):
+    
+    P = Pearson[me][me2]
+    cut_min = minimum[me][me2]
+    cut_max = maximum[me][me2]
+    
     fig = pl.figure(figsize=(9,9))
     #ax = fig.add_subplot(111)
     ax = fig.add_axes([0.02,0.02,0.9,0.9])
@@ -384,7 +486,7 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[0]+bx,y[0]+by), Pearson[0], (x_gr, y_gr), method='nearest')
+    z_gr = griddata((x[0]+bx,y[0]+by), P[0], (x_gr, y_gr), method='nearest')
     
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both')
@@ -401,7 +503,7 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[1]+bx,y[1]+by), Pearson[1], (x_gr, y_gr), method='nearest')
+    z_gr = griddata((x[1]+bx,y[1]+by), P[1], (x_gr, y_gr), method='nearest')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
@@ -418,7 +520,7 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     x_gr, y_gr = np.meshgrid(xls, yls)
     
     # grid the data.
-    z_gr = griddata((x[2]+bx,y[2]+by), Pearson[2], (x_gr, y_gr), method='nearest')
+    z_gr = griddata((x[2]+bx,y[2]+by), P[2], (x_gr, y_gr), method='nearest')
 
     cs = ax.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=pl.cm.coolwarm,
                              levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
@@ -486,7 +588,7 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
 
     # inset
     ax2 = fig.add_axes([0.56, 0.11, 0.32, 0.32], facecolor=(1.,1.,1.))
-    marray = np.ma.masked_where(tis <= 0,tis).mask
+    marray = np.ma.masked_where(tis[0] <= 0,tis[0]).mask
     z11 = np.ma.array(ag[me], mask = marray).compressed()
     z12 = np.ma.array(ag[me2], mask = marray).compressed()
     ax2.hist2d(z11, z12, bins=200, cmap='Blues',alpha=1, norm = matplotlib.colors.LogNorm())
@@ -497,48 +599,11 @@ def make_plot(Pearson,ag,tis,me,me2,cut_min,cut_max,fw,contour_levels):
     ax2.set_xlabel(lblx, fontsize = 26)
     lbly = r'$z_{%s}$' % ag_sgn[me2]
     ax2.set_ylabel(lbly, fontsize = 26)
-
-    """
-        # inset 1
-    ax2 = fig.add_axes([0.49, 0.11, 0.2, 0.2], facecolor=(1.,1.,1.))
-    marray = np.ma.masked_where(tis != 1,tis).mask
-    z11 = np.ma.array(ag[me], mask = marray).compressed()
-    z12 = np.ma.array(ag[me2], mask = marray).compressed()
-    ax2.hist2d(z11, z12, bins=200, cmap='Blues',alpha=1, norm = matplotlib.colors.LogNorm())
-    
-    ax2.tick_params(axis='both', which='major', labelsize=20)
-
-    ax2.set_title(r'$\rm WM$', fontsize = 26)
-    lblx = r'$z_{%s}$' % ag_sgn[me]
-    ax2.set_xlabel(lblx, fontsize = 26)
-    lbly = r'$z_{%s}$' % ag_sgn[me2]
-    ax2.set_ylabel(lbly, fontsize = 26)
-
-    #ax2.set_xlim(np.min(ag[me]),np.max(ag[me]))
-    #ax2.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
-
-    # inset 2
-    ax3 = fig.add_axes([0.71, 0.11, 0.2, 0.2], facecolor=(1.,1.,1.))
-    marray = np.ma.masked_where(tis != 2,tis).mask
-    z21 = np.ma.array(ag[me], mask = marray).compressed()
-    z22 = np.ma.array(ag[me2], mask = marray).compressed()
-    ax3.hist2d(z21, z22, bins=200, cmap='Blues', alpha=1, norm = matplotlib.colors.LogNorm()) #matplotlib.colors.PowerNorm(1))
-    
-    ax3.tick_params(axis='both', which='major', labelsize=20)
-    
-    ax3.set_yticks([])
-    ax3.set_title(r'$\rm GM$', fontsize = 26)
-    lblx = r'$z_{%s}$' % ag_sgn[me]
-    ax3.set_xlabel(lblx, fontsize = 26)
-    #lbly = r'$z_{%s}$' % ag_sgn[me2]
-    #ax3.set_ylabel(lbly, fontsize = 26)
-    
-    #ax3.set_xlim(np.min(ag[me]),np.max(ag[me]))
-    #ax3.set_ylim(np.min(ag[me2]),np.max(ag[me2]))
-    """
 
     pl.savefig(fw + '.png', format = 'png', dpi=100, orientation='landscape')
     pl.close()
 
+###################################################################
+###################################################################
 if __name__ == '__main__':
     main()

@@ -63,8 +63,8 @@ void ScenarioGeometry::reset() {
   vlen = vlen_1 = vlen_2 = 0.0;
   vvol = vvol_1 = 0.0;
 
-  for (int ag_id=0; ag_id<num_agents; ag_id++)
-    init_val[ag_id] = -1.0;
+  init_val.clear();
+  init_val.resize(num_agents,-1);
 
   prop.D_sAb = prop.diff_sAb = 0.0;
   prop.D_mic = prop.diff_mic = 0.0;
@@ -99,20 +99,27 @@ void ScenarioGeometry::reset() {
   output = new Output();
   region = new Region();
 
-  init_val.clear();
-  init_val.resize(num_agents);
-
-  // set initial values
-  for (int ag_id=0; ag_id<num_agents; ag_id++) {
-    if (init_val[ag_id] >= 0.0)
-      for (int i=0; i<nall; i++)
-        set_agent(ag_id,i,init_val[ag_id],0);
-  }
-
 }
 
 /* ----------------------------------------------------------------------*/
 void ScenarioGeometry::allocations() {
+  for (auto &a: x) {
+    a.clear();
+    a.resize(nall);
+  }
+
+  tag.clear();
+  tag.resize(nall);
+
+  type.clear();
+  type.resize(nall);
+
+  group.clear();
+  group.resize(nall);
+
+  is_loc.clear();
+  is_loc.resize(nall);
+
   for (auto &a: agent) {
     a.clear();
     a.resize(nall);

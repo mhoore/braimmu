@@ -33,10 +33,22 @@ if len(sys.argv) < 2:
 
 fname = sys.argv[1]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ","group")
-ag_tit = (r'$M/M_{\rm o}$', r'$N/N_{\rm max}$', r'$S / S_{\rm max}$',r'$F / F_{\rm max}$',r'$A$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+AGENTS = ("mic","neu","sAb","fAb","ast","phr", "tau","typ","group", "atrophy")
+ag_tit = (r'$M/M_{\rm o}$', r'$N/N_{\rm max}$', r'$S$',r'$F/F_{\rm max}$',r'$A$',r'$P / P_{\rm max}$',r'$T / T_{\rm max}$',r'$\rm Tissue$',r'$\rm VOI$',r'$1 - N/N_{\rm o}$')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$P ~{\rm (\mu M)}$',r'$T ~{\rm (\mu M)}$', r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_sgn = ('M','N','S','F','A','P','T','TYPE','VOI','atrophy')
+
+me_mic = 0
+me_neu = 1
+me_sAb = 2
+me_fAb = 3
+me_ast = 4
+me_phr = 5
+me_tau = 6
+me_typ = 7
+me_voi = 8
+me_atr = 9
+me_all = 10
 
 VOIs = []
 VOIs.append( (r'$\rm FrW$', 30, 17,    'FLW ', 'FRW ', 'black',         2.2, '-' ) )
@@ -159,7 +171,7 @@ def main():
             
             c += 1
 
-    dataf = data[:,:,:,0,5].flatten()
+    dataf = data[:,:,:,0,me_typ].flatten()
     marray = np.ma.masked_where(dataf != 1, dataf).mask
     dat1 = np.ma.array(dataf, mask = marray).compressed()
     marray = np.ma.masked_where(dataf != 2, dataf).mask
@@ -167,8 +179,8 @@ def main():
     
     tot_vol = dx[0] * dx[1] * dx[2] * (len(dat1) + len(dat2))
 
-    # time, voi_label, voi_name, vol, M_mn, M_std,  N_mn, N_std,  S_mn, S_std,  F_mn, F_std,  A_mn, A_std,  TYPE_mn, TYPE_std,  VOI_mn, VOI_std,  atrophy_mn, atrophy_std
-    #    0          1         2    3     4      5      6      7      8      9     10     11     12     13        14        15       16       17           18           19
+    # time, voi_label, voi_name, vol, M_mn, M_std,  N_mn, N_std,  S_mn, S_std,  F_mn, F_std,  A_mn, A_std,  T_mn, T_std,  TYPE_mn, TYPE_std,  VOI_mn, VOI_std,  atrophy_mn, atrophy_std
+    #    0          1         2    3     4      5      6      7      8      9     10     11     12     13     14     15        16        17       18       19           20           21
     step = np.genfromtxt(fname, dtype=np.int, comments='#',usecols=(0))
     vlabel = np.genfromtxt(fname, dtype=np.int, comments='#',usecols=(1))
     vname = np.genfromtxt(fname, dtype="|U4", comments='#',usecols=(2))
@@ -189,6 +201,7 @@ def main():
     
     voi_vol = np.zeros(len(VOIs),dtype=float)
     voi_max = np.zeros((len(VOIs),len(ag_sgn),2),dtype=float)
+    voi_min = np.zeros((len(VOIs),len(ag_sgn),2),dtype=float)
 
     voi_ag_mn = []
     voi_ag_sd = []
@@ -207,16 +220,19 @@ def main():
             voi_max[i,j,0] = np.max(a_mn)
             voi_max[i,j,1] = a_sd[np.argmax(a_mn)]
             
+            voi_min[i,j,0] = np.min(a_mn)
+            voi_min[i,j,1] = a_sd[np.argmin(a_mn)]
+
         voi_id[i] = i
         voi_tit[i] = VOIs[i][0]
         voi_col[i] = VOIs[i][5]
         
-    make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, data[:,:,:,0,6])
+    make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_min)
     
 #########################
 ## plot
 #########################
-def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
+def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_min):
     
     # Plot properties
     n_X = 3
@@ -224,9 +240,9 @@ def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
     ax_len_x = 0.7/n_X         # Length of one subplot square box
     ax_len_y = 0.355/n_Y         # Length of one subplot square box
     ax_bx = 0.08               # Beginning/offset of the subplot in the box
-    ax_by = 0.54               # Beginning/offset of the subplot in the box
+    ax_by = 0.56               # Beginning/offset of the subplot in the box
     ax_sepx = 0.10             # Separation length between two subplots
-    ax_sepy = 0.065             # Separation length between two subplots
+    ax_sepy = 0.05             # Separation length between two subplots
     total_subplots_in_x = n_X  # Total number of subplots
 
     ax = []
@@ -240,16 +256,27 @@ def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
     # Panel numbering properties
     props = dict(boxstyle='round', facecolor='white', edgecolor='none', alpha=1.0)
 
-    # empty
+    ax_id = -1
+    
+    # tau
+    me = me_tau
     ax.append( subp.addSubplot() )
-    ax_id = 0
+    ax_id += 1
+    
+    val_max = np.max(voi_max[:,me,0])
+    for i in range(len(VOIs)):
+        ax[ax_id].plot(time, voi_ag_mn[i][me] / val_max,c=VOIs[i][5],lw=VOIs[i][6], ls=VOIs[i][7], label = VOIs[i][0])
 
-    ax[ax_id].set_axis_off()
+    ax[ax_id].set_xlabel(r'$\rm time ~(yr)$')
+    ax[ax_id].xaxis.set_minor_locator(mlx)
+    ax[ax_id].set_title(ag_tit[me],fontsize=20)
+    
+    ax[ax_id].set_xlim(0, 13.9)
 
     # fAb
-    me = 3
+    me = me_fAb
     ax.append( subp.addSubplot() )
-    ax_id = 1
+    ax_id += 1
     
     val_max = np.max(voi_max[:,me,0])
     for i in range(len(VOIs)):
@@ -262,38 +289,39 @@ def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
     ax[ax_id].set_xlim(0, 13.9)
 
     # ast
-    me = 4
+    me = me_ast
     ax.append( subp.addSubplot() )
-    ax_id = 2
+    ax_id += 1
     
     for i in range(len(VOIs)):
         ax[ax_id].plot(time, voi_ag_mn[i][me],c=VOIs[i][5],lw=VOIs[i][6], ls=VOIs[i][7], label = VOIs[i][0])
 
     ax[ax_id].set_xlabel(r'$\rm time ~(yr)$')
     ax[ax_id].xaxis.set_minor_locator(mlx)
-    ax[ax_id].set_title(ag_tit[me],fontsize=24)
+    ax[ax_id].set_title(ag_tit[me],fontsize=20)
     
     ax[ax_id].set_xlim(0, 13.9)
     ax[ax_id].set_ylim(0,1)
 
     # neu
-    me = 1
+    me = me_neu
     ax.append( subp.addSubplot() )
-    ax_id = 3
+    ax_id += 1
     
     val_max = np.max(voi_max[:,me,0])
     for i in range(len(VOIs)):
         ax[ax_id].plot(time, voi_ag_mn[i][me] / val_max,c=VOIs[i][5],lw=VOIs[i][6], ls=VOIs[i][7], label = VOIs[i][0])
 
+    ax[ax_id].xaxis.set_major_formatter(pl.NullFormatter())
     ax[ax_id].xaxis.set_minor_locator(mlx)
     ax[ax_id].set_title(ag_tit[me],fontsize=20)
     
     ax[ax_id].set_xlim(0, 13.9)
 
     # atrophy
-    me = 7
+    me = me_atr
     ax.append( subp.addSubplot() )
-    ax_id = 4
+    ax_id += 1
     
     for i in range(len(VOIs)):
         ax[ax_id].plot(time, voi_ag_mn[i][me],c=VOIs[i][5],lw=VOIs[i][6], ls=VOIs[i][7], label = VOIs[i][0])
@@ -306,9 +334,9 @@ def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
     ax[ax_id].set_ylim(0, 1)
     
     # mic
-    me = 0
+    me = me_mic
     ax.append( subp.addSubplot() )
-    ax_id = 5
+    ax_id += 1
     
     for i in range(len(VOIs)):
         ax[ax_id].plot(time, voi_ag_mn[i][me] / voi_ag_mn[i][me][0],c=VOIs[i][5],lw=VOIs[i][6], ls=VOIs[i][7], label = VOIs[i][0])
@@ -318,82 +346,148 @@ def make_plot(time, voi_vol, voi_ag_mn, voi_ag_sd, voi_max, voi_map):
     ax[ax_id].set_title(ag_tit[me],fontsize=20)
     
     ax[ax_id].set_xlim(0, 13.9)
-
+    
+    ############
+    ## bar plots
+    ############
+    nx = 6
+    ly = 0.39
+    begx = 0.07
+    begy = 0.03
+    sepx = 0.01
+    
+    lx = (1.0 - begx - nx * sepx) / nx
+    
     # voi volumes
-    ax2 = fig.add_axes([0.1, 0.075, 0.89, 0.12], facecolor=(1.,1.,1.))
-    ax2.bar(voi_id, voi_vol+0.01, width=0.8,bottom=-0.01, align='center', color = voi_col, linewidth=0.5, edgecolor='k')
-    ax2.set_xticks(np.arange(len(VOIs)))
-    ax2.set_xticklabels(voi_tit, rotation=45, ha='center', va='top')
-    ax2.axhline(y=0,linewidth=0.5, color='k')
-    ax2.set_ylabel(r'$V/V_{\rm par}$',fontsize=20)
-
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    ax2.barh(voi_id, voi_vol+0.01, height=0.8,left=-0.01, align='center', color = voi_col, linewidth=0.5, edgecolor='k')
+    ax2.set_yticks(np.arange(len(VOIs)))
+    ax2.set_yticklabels(voi_tit, ha='right', va='center')
+    ax2.axvline(x=0,linewidth=0.5, color='k')
+    ax2.set_xlabel(r'$V/V_{\rm par}$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
+    
     # voi Fmax
-    ax3 = fig.add_axes([0.1, 0.205, 0.89, 0.12], facecolor=(1.,1.,1.))
-    ax3.bar(voi_id, voi_max[:,3,0], yerr=[np.zeros_like(voi_max[:,3,1]), voi_max[:,3,1]],
-            width=0.8,bottom=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
-    ax3.set_xticks(np.arange(len(VOIs)))
-    pl.setp(ax3.get_xticklabels(), visible=False)
-    ax3.set_ylabel(r'$F_{\rm max} ~{\rm (\mu M)}$',fontsize=24)
+    me = me_fAb
+    begx += sepx + lx
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    ax2.barh(voi_id, voi_max[:,me,0] / np.max(voi_max[:,me,0]), xerr=[np.zeros_like(voi_max[:,me,1]), voi_max[:,me,1]] / np.max(voi_max[:,me,0]),
+            height=0.8,left=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
+    ax2.set_yticks(np.arange(len(VOIs)))
+    pl.setp(ax2.get_yticklabels(), visible=False)
+    ax2.set_xlabel(r'$F_{\rm peak} / F_{\rm max}$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
+    
+    # voi Tmax
+    me = me_tau
+    begx += sepx + lx
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    ax2.barh(voi_id, voi_max[:,me,0] / np.max(voi_max[:,me,0]), xerr=[np.zeros_like(voi_max[:,me,1]), voi_max[:,me,1]] / np.max(voi_max[:,me,0]),
+            height=0.8,left=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
+    ax2.set_yticks(np.arange(len(VOIs)))
+    pl.setp(ax2.get_yticklabels(), visible=False)
+    ax2.set_xlabel(r'$T_{\rm peak} / T_{\rm max}$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
 
     # voi neu_0
-    ax4 = fig.add_axes([0.1, 0.335, 0.89, 0.12], facecolor=(1.,1.,1.))
-    ax4.bar(voi_id, voi_max[:,1,0] / np.max(voi_max[:,1,0]), yerr=[np.zeros_like(voi_max[:,1,1]), voi_max[:,1,1] / np.max(voi_max[:,1,0]) ],
-            width=0.8,bottom=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
-    ax4.set_xticks(np.arange(len(VOIs)))
-    pl.setp(ax4.get_xticklabels(), visible=False)
-    ax4.set_ylim(0,1.7)
-    ax4.set_ylabel(r'$N_{\rm o}/N_{\rm max}$',fontsize=20)
+    me = me_neu
+    begx += sepx + lx
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    ax2.barh(voi_id, voi_max[:,me,0] / np.max(voi_max[:,me,0]), xerr=[np.zeros_like(voi_max[:,me,1]), voi_max[:,me,1] / np.max(voi_max[:,me,0]) ],
+            height=0.8,left=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
+    ax2.set_yticks(np.arange(len(VOIs)))
+    pl.setp(ax2.get_yticklabels(), visible=False)
+    #ax2.set_xlim(0,1.7)
+    ax2.set_xlabel(r'$N_{\rm o}/N_{\rm max}$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
 
+    # voi mic_max
+    me = me_mic
+    begx += sepx + lx
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    M0 = voi_ag_mn[0][me][0]
+    
+    for i in range(len(VOIs)):
+        print(VOIs[i][0], voi_max[i,me,0] / M0, voi_min[i,me,0] / M0)
+        if (voi_max[i,me,0] / M0 - 1.0 < 1.0 - voi_min[i,me,0] / M0):
+            voi_max[i,me,0] = voi_min[i,me,0]
+    
+    ax2.barh(voi_id, voi_max[:,me,0] / M0 - 1.0, # xerr= voi_max[:,me,1] / M0,
+            height=0.8,left=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
+    ax2.set_yticks(np.arange(len(VOIs)))
+    pl.setp(ax2.get_yticklabels(), visible=False)
+    ax2.set_xticks([-.1,.1])
+    ax2.set_xlim(-0.2,0.2)
+    ax2.set_xlabel(r'$M_{\rm ex}/M_{\rm o} - 1$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
+    ax2.axvline(x=0,linewidth=0.5, color='k')
+
+    # voi atrophy
+    me = me_neu
+    begx += sepx + lx
+    ax2 = fig.add_axes([begx, begy, lx, ly], facecolor=(1.,1.,1.))
+    
+    M0 = voi_ag_mn[0][me][0]
+    
+    t1 = 36
+    
+    # conversion to array
+    arr0 = np.zeros(len(voi_ag_mn),dtype=np.float32)
+    arr1 = np.zeros_like(arr0)
+    arr2 = np.zeros_like(arr0)
+    
+    c = 0
+    for x in voi_ag_mn:
+        arr0[c] = x[me][0]
+        arr1[c] = x[me][t1]
+        c += 1
+    c = 0
+    for x in voi_ag_sd:
+        arr2[c] = x[me][t1]
+        c += 1
+    
+    ax2.barh(voi_id, 1.0 - arr1 / arr0, xerr=[np.zeros_like(arr1), arr2 / arr0 ],
+            height=0.8,left=0, align='center', color = voi_col, linewidth=0.5, edgecolor='k', error_kw=dict(ecolor='k', elinewidth=0.5, capthick=0.5, capsize=3))
+    ax2.set_yticks(np.arange(len(VOIs)))
+    pl.setp(ax2.get_yticklabels(), visible=False)
+    #ax2.set_xticks([.2,.8])
+    #ax2.set_xlim(0,1)
+    ax2.set_xlabel(r'$1 - N_{\rm 10yr}/N_{\rm o}$',fontsize=20)
+    ax2.xaxis.set_label_position("top")
+    
     # brain section
-    ax5 = fig.add_axes([0.04, 0.48, 0.30, 0.25], facecolor=(1.,1.,1.))
-    ax5.set_axis_off()
+    #ax2 = fig.add_axes([0.04, 0.48, 0.30, 0.25], facecolor=(1.,1.,1.))
+    #ax2.set_axis_off()
 
-    import matplotlib.image as mpimg
-    im = mpimg.imread('group.png')
-    ax5.imshow(im)
+    #import matplotlib.image as mpimg
+    #im = mpimg.imread('group.png')
+    #ax2.imshow(im)
 
     #labeling
     fig.text(0.01,0.975,r'a',fontsize=26)
     fig.text(0.35,0.975,r'b',fontsize=26)
     fig.text(0.67,0.975,r'c',fontsize=26)
     
-    fig.text(0.01,0.73,r'd',fontsize=26)
-    fig.text(0.35,0.73,r'e',fontsize=26)
-    fig.text(0.67,0.73,r'f',fontsize=26)
+    fig.text(0.01,0.75,r'd',fontsize=26)
+    fig.text(0.35,0.75,r'e',fontsize=26)
+    fig.text(0.67,0.75,r'f',fontsize=26)
 
-    fig.text(0.11,0.425,r'g',fontsize=26)
-    fig.text(0.11,0.3,r'h',fontsize=26)
-    fig.text(0.11,0.17,r'i',fontsize=26)
-
-
-    """
-    ## dim1
-    bx = 0.0
-    by = 0.5
-    xls = np.linspace(bx,bx+lx[0],Nx[0])
-    yls = np.linspace(by,by+lx[2],Nx[2])
-    x_gr, y_gr = np.meshgrid(xls, yls)
-    
-    sec = 60
-    z = voi_map[:,sec,:].flatten()
-    
-    # grid the data.
-    z_gr = griddata((x[0]+bx,y[0]+by), z, (x_gr, y_gr), method='nearest')
-
-    cmap = matplotlib.colors.ListedColormap(voi_col)
-
-    contour_levels = len(VOIs)
-    cs = ax5.contourf(x_gr,y_gr,z_gr, contour_levels, cmap=cmap) # levels = np.linspace(cut_min,cut_max,contour_levels), extend='both') # , norm = LogNorm())
-    
-    cs.cmap.set_under('None')
-    cs.cmap.set_over('None')
-    """
+    fig.text(0.06 + 0.5*lx + 0.0 * (sepx + lx), 0.46,r'g',fontsize=26)
+    fig.text(0.06 + 0.5*lx + 1.0 * (sepx + lx), 0.46,r'h',fontsize=26)
+    fig.text(0.06 + 0.5*lx + 2.0 * (sepx + lx), 0.46,r'i',fontsize=26)
+    fig.text(0.06 + 0.5*lx + 3.0 * (sepx + lx), 0.46,r'j',fontsize=26)
+    fig.text(0.06 + 0.5*lx + 4.0 * (sepx + lx), 0.46,r'k',fontsize=26)
+    fig.text(0.06 + 0.5*lx + 5.0 * (sepx + lx), 0.46,r'l',fontsize=26)
 
     pl.savefig("voi_time.png", format = 'png', dpi=200, orientation='landscape')
     pl.show()
     #sys.stdin.read(1)
     pl.close()
-
 
 if __name__ == '__main__':
     main()

@@ -30,7 +30,7 @@ p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
 # Data Input
 scale_fac = 1.e-3
 
-if len(sys.argv) < 8:
+if len(sys.argv) < 9:
     print(sys.argv)
     sys.exit("Error: chack the arguments")
 
@@ -42,20 +42,24 @@ sec.append(int(sys.argv[4]))
 time = sys.argv[5]
 realtime = float(sys.argv[6])
 fr0 = sys.argv[7]
+frstat = sys.argv[8]
 
-AGENTS = ("mic","neu","sAb","fAb","ast","typ","group", "atrophy")
-ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
-ag_sgn = ('M','N','S','F','A','TYPE','VOI','atrophy')
+AGENTS = ("mic","neu","sAb","fAb","ast","phr","tau","typ","group", "atrophy")
+ag_tit = (r'$\rm Microglia$', r'$\rm Neurons$', r'$\rm [sA\beta]$',r'$\rm [fA\beta]$',r'$\rm Astrogliosis$',r'$\rm [\phi]$', r'$\rm [\tau]$',r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_names = (r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$',r'$P ~{\rm (\mu M)}$',r'$T ~{\rm (\mu M)}$', r'$\rm Tissue$',r'$\rm VOI$',r'$\rm Atrophy$')
+ag_sgn = ('M','N','S','F','A','P','T','TYPE','VOI','atrophy')
 
 me_mic = 0
 me_neu = 1
 me_sAb = 2
 me_fAb = 3
 me_ast = 4
-me_typ = 5
-me_group = 6
-me_atrophy = 7
+me_phr = 5
+me_tau = 6
+me_typ = 7
+me_group = 8
+me_atrophy = 9
+me_all = 10
 
 class Volume_of_Interest:
     # Constructor
@@ -114,8 +118,7 @@ class Subplots:
         return self.fig.add_axes([self.xbeg,self.ybeg,self.length_x,self.length_y])
 
 def main():
-    
-    #data = np.genfromtxt(fr, dtype=np.float32, skip_header=2, max_rows = 1)
+
     img = nib.load(fr)
     data = img.get_fdata()
 
@@ -292,7 +295,7 @@ def main():
     z = - data[:,:,:,0,me].flatten() / data0[:,:,:,0,me].flatten() + 1.0
     tis = data[:,:,:,0,-2].flatten()
 
-    make_plot(atrophy,z,tis,Nx[3],cut_min,cut_max,fw,100)
+    #make_plot(atrophy,z,tis,Nx[3],cut_min,cut_max,fw,100)
     
     data = []
     data_sec = []
@@ -305,13 +308,13 @@ def main():
 
 ## plots
 def combine_plots():
-    me_1 = ( me_mic, me_neu, me_atrophy, me_fAb, me_sAb, me_ast )
-    tit  = (   r'a',   r'b',       r'c',   r'd',   r'e',   r'f' )
+    me_1 = ( me_mic, me_neu, me_fAb, me_sAb, me_ast, me_phr, me_tau, me_all )
+    tit  = (   r'a',   r'b',   r'c',   r'd',   r'e',   r'f',   r'g',   r'h',   r'i' )
     
-    fig = pl.figure(figsize=(15,10))
+    fig = pl.figure(figsize=(15,15))
 
     n_X = 3
-    n_Y = 2
+    n_Y = 3
     
     b_X = 0.01
     b_Y = 0.01
@@ -324,7 +327,7 @@ def combine_plots():
     
     c= 0
     # from top left to bottom right
-    for j in range(n_Y):
+    for j in range(n_Y-1):
         y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
         for i in range(n_X):
             x_ax = b_X + (l_X + sep_X) * i
@@ -338,26 +341,139 @@ def combine_plots():
             im = mpimg.imread(fw)
             ax.imshow(im)
             
-            fig.text(x_ax + 0.01, y_ax + l_Y - 0.03, tit[c], fontsize=30)
+            fig.text(x_ax + 0.01, y_ax + l_Y - 0.02, tit[c], fontsize=30)
             
             c += 1
+    
+    # tau
+    j = n_Y-1
+    y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
+    i = 0
+    x_ax = b_X + (l_X + sep_X) * i
+    ax = fig.add_axes([x_ax, y_ax, l_X, l_Y], facecolor=(1.,1.,1.))
+    ax.set_axis_off()
+            
+    fw = "multi/m_Z_" + AGENTS[me_1[c]] + "_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time + ".png"
+    im = mpimg.imread(fw)
+    ax.imshow(im)
+            
+    fig.text(x_ax + 0.01, y_ax + l_Y - 0.02, tit[c], fontsize=30)
+    
+    c += 1
+
+    ## meanfield_plot
+    dt = 0.001
+    delt = dt / 365.
+
+    time_id = 0
+    M_id = 1
+    N_id = 2
+    S_id = 3
+    F_id = 4
+    A_id = 5
+    P_id = 6
+    T_id = 7
+    names = (r'$\rm time ~{\rm (yr)}$', r'$M / M_{\rm max}$', r'$N / N_{\rm max}$', r'$S / S_{\rm max}$', r'$F / F_{\rm max}$', r'$\rm Astrogliosis$')
+    names_real = (r'$t ~{\rm (yr)}$', r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$')
+    
+    # step region mic neu sAb fAb ast phr tau cir
+    data = np.genfromtxt(frstat, dtype=np.float32, skip_header=2, usecols=(0,2,3,4,5,6,7,8))
+    data_PAR = data[0::2,:]
+    data_CSF = data[1::2,:]
+    
+    j = n_Y-1
+    y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j + 0.10*l_Y
+    i = 1
+    x_ax = b_X + (l_X + sep_X) * i + 0.17*l_X
+    ax = fig.add_axes([x_ax, y_ax, 1.80*l_X, 0.70*l_Y], facecolor=(1.,1.,1.))
+    
+    
+    x = data_PAR[:,time_id] * delt
+    y = 1.0 - data_PAR[:,N_id] / np.max(data_PAR[:,N_id])
+    lbl = r'$\rm dementia$'
+    
+    ax.plot(x, y, c='k', ls='-', lw=2, label=lbl)
+
+    # fAb
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,F_id] / np.max(data_PAR[:,F_id])
+    lbl = r'$\rm F / F_{\rm max}$'
+    
+    ax.plot(x, y, c='r', ls='--', lw=2, label=lbl)
+
+    # A
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,A_id]
+    lbl = r'$\rm astrogliosis$'
+    
+    ax.plot(x, y, c='b', ls='-.', lw=2, label=lbl)
+
+    # PAR sAb
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,S_id] / np.max(data_PAR[:,S_id])
+    lbl = r'$\rm S / S_{\rm max} (ISF)$'
+    
+    ax.plot(x, y, c='g', ls='-', lw=2, label=lbl)
+
+    # CSF sAb
+    x = data_CSF[:,time_id] * delt
+    y = data_CSF[:,S_id] / np.max(data_CSF[:,S_id])
+    lbl = r'$\rm S / S_{\rm max} (CSF)$'
+    
+    ax.plot(x, y, c='g', ls='--', lw=2, label=lbl)
+
+    # PAR phr
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,P_id] / np.max(data_PAR[:,P_id])
+    lbl = r'$\rm P / P_{\rm max} (ISF)$'
+    
+    ax.plot(x, y, c='magenta', ls='-', lw=2, label=lbl)
+
+    # CSF phr
+    x = data_CSF[:,time_id] * delt
+    y = data_CSF[:,P_id] / np.max(data_CSF[:,P_id])
+    lbl = r'$\rm P / P_{\rm max} (CSF)$'
+    
+    ax.plot(x, y, c='magenta', ls='-.', lw=2, label=lbl)
+
+    # tau
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,T_id] / np.max(data_PAR[:,T_id])
+    lbl = r'$\rm T / T_{\rm max}$'
+    
+    ax.plot(x, y, c='b', ls='--', lw=2, label=lbl)
+
+
+    ax.legend(loc='center left', bbox_to_anchor=(0.0, 1.15), fontsize=16, ncol=4)
+
+    #ax.set_yscale('log')
+
+    fig.text(x_ax + 1.45*l_X, 0.02*l_Y, names[time_id])
+
+    ax.set_xlim(0.0,np.max(x))
+    ax.set_xticks([0,5,10])
+    ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
+    ax.set_ylim(0,1.01)
+    ax.set_yticks(np.linspace(0, 1, 3, endpoint=True))
+    #ax.set_ylabel('y', color='black', fontsize = 24)
+
+    minorLocator   = MultipleLocator(0.5)
+    ax.xaxis.set_minor_locator(minorLocator)
+
+    ax.axvline(x=realtime / 365., ymin=0, ymax=1, lw=1.5,color='red')
+
+    j = n_Y-1
+    y_ax = 1.0 - b_Y - l_Y - (l_Y + sep_Y) * j
+    i = 1
+    x_ax = b_X + (l_X + sep_X) * i
+    fig.text(x_ax + 0.01, y_ax + l_Y - 0.02, tit[c], fontsize=30)
+
+    c += 1
 
     fw = "multi/m_all_s" + str(sec[0]) + "_" + str(sec[1]) + "_" + str(sec[2]) + "_t" + time
     pl.savefig(fw + '.png', format = 'png', dpi=200, orientation='landscape')
     pl.close()
     
-"""
-def prune_data():
-    # find useless data
-    for i in range(3):
-        marray = np.ma.masked_where(data[sec[0]-1,:,:,0,-1] < 0,data[sec[0]-1,:,:,0,-1]).mask
-        
-        x[i] = np.ma.array(x[i], mask = marray).compressed()
-        y[i] = np.ma.array(y[i], mask = marray).compressed()
-    
-        for j in range(Nx[3]):
-            agents[i][j] = np.ma.array(agents[i][j], mask = marray).compressed()
-"""
 ## plots
 def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
     
@@ -381,7 +497,6 @@ def make_plot(Zscore,z,tis,me,cut_min,cut_max,fw,contour_levels):
         #cmap = pl.cm.get_cmap('Greys', len(voi))
     elif (me == Nx[3]):
         lbl = r'$\rm Atrophy$'
-
 
     ## dim0
     bx = lx[0] + xsep

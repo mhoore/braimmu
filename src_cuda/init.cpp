@@ -200,7 +200,7 @@ void Init::boundaries(VirtualBrain *brn) {
 /* ----------------------------------------------------------------------
  * Set local and ghost voxels for each partition
  * ----------------------------------------------------------------------*/
-void Init::voxels(VirtualBrain *brn, int allocated) {
+void Init::voxels(VirtualBrain *brn, bool allocated) {
   tagint nvoxel;
   int nlocal,nghost,nall;
   double pos[3];
@@ -240,8 +240,12 @@ void Init::voxels(VirtualBrain *brn, int allocated) {
   brn->nghost = nghost;
   brn->nall = nall;
 
-  /// allocations
-  allocations(brn, allocated);
+  if (!allocated) {
+    maparr.clear();
+    maparr.resize(brn->nvoxel);
+  }
+
+  brn->allocations();
 
   auto &x = brn->x;
   auto &tag = brn->tag;
@@ -341,38 +345,6 @@ tagint Init::find_tag(VirtualBrain *brn, int i, int j, int k) {
     return -1;
 
   return i + nv[0] * (j + nv[1]*k);
-
-}
-
-/* ----------------------------------------------------------------------*/
-void Init::allocations(VirtualBrain *brn, int allocated) {
-
-  for (auto &a: brn->x) {
-    a.clear();
-    a.resize(brn->nall);
-  }
-
-  //brn->x.clear();
-  //brn->x.resize(brn->nall);
-
-  brn->tag.clear();
-  brn->tag.resize(brn->nall);
-
-  brn->type.clear();
-  brn->type.resize(brn->nall);
-
-  brn->group.clear();
-  brn->group.resize(brn->nall);
-
-  brn->is_loc.clear();
-  brn->is_loc.resize(brn->nall);
-
-  if (!allocated) {
-    maparr.clear();
-    maparr.resize(brn->nvoxel);
-  }
-
-  brn->allocations();
 
 }
 

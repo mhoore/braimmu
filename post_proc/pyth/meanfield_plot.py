@@ -36,15 +36,14 @@ fr = sys.argv[1]
 dt = 0.001
 delt = dt / 365.
 
-T_id = 0
+time_id = 0
 M_id = 1
 N_id = 2
 S_id = 3
 F_id = 4
 A_id = 5
-
-names = (r'$\rm time ~{\rm (yr)}$', r'$M / M_{\rm max}$', r'$N / N_{\rm max}$', r'$S / S_{\rm max}$', r'$F / F_{\rm max}$', r'$\rm Astrogliosis$')
-names_real = (r'$t ~{\rm (yr)}$', r'$M ~{\rm (mL^{-1})}$', r'$N ~{\rm (mL^{-1})}$', r'$S ~{\rm (\mu M)}$',r'$F ~{\rm (\mu M)}$',r'$\rm Astrogliosis$')
+P_id = 6
+T_id = 7
 
 class Subplots:
     """ Arrange subplot grid structure (square box is assumed)"""
@@ -80,8 +79,8 @@ class Subplots:
 def main():
     
     #data = np.genfromtxt(fr, dtype=np.float32, skip_header=2)
-    # step region mic neu sAb fAb ast cir
-    data = np.genfromtxt(fr, dtype=np.float32, skip_header=2, usecols=(0,2,3,4,5,6))
+    # step region mic neu sAb fAb ast phr tau cir
+    data = np.genfromtxt(fr, dtype=np.float32, skip_header=2, usecols=(0,2,3,4,5,6,7,8))
     
     data_PAR = data[0::2,:]
     data_CSF = data[1::2,:]
@@ -93,40 +92,60 @@ def main():
     ax = fig.add_subplot(111)
     
     # dementia (1 - N/N0)
-    x = data_PAR[:,T_id] * delt
+    x = data_PAR[:,time_id] * delt
     y = 1.0 - data_PAR[:,N_id] / np.max(data_PAR[:,N_id])
     lbl = r'$\rm dementia$'
     
     ax.plot(x, y, c='k', ls='-', lw=2.0, label=lbl)
 
     # fAb
-    x = data_PAR[:,T_id] * delt
+    x = data_PAR[:,time_id] * delt
     y = data_PAR[:,F_id] / np.max(data_PAR[:,F_id])
     lbl = r'$\rm F / F_{\rm max}$'
     
     ax.plot(x, y, c='r', ls='--', lw=2, label=lbl)
 
     # A
-    x = data_PAR[:,T_id] * delt
+    x = data_PAR[:,time_id] * delt
     y = data_PAR[:,A_id]
     lbl = r'$\rm astrogliosis$'
     
     ax.plot(x, y, c='b', ls='-.', lw=2, label=lbl)
 
     # PAR sAb
-    x = data_PAR[:,T_id] * delt
+    x = data_PAR[:,time_id] * delt
     y = data_PAR[:,S_id] / np.max(data_PAR[:,S_id])
     lbl = r'$\rm S / S_{\rm max} (ISF)$'
     
     ax.plot(x, y, c='g', ls='-', lw=2, label=lbl)
 
     # CSF sAb
-    x = data_CSF[:,T_id] * delt
+    x = data_CSF[:,time_id] * delt
     y = data_CSF[:,S_id] / np.max(data_CSF[:,S_id])
     lbl = r'$\rm S / S_{\rm max} (CSF)$'
     
     ax.plot(x, y, c='g', ls='-.', lw=2, label=lbl)
 
+    # PAR phr
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,P_id] / np.max(data_PAR[:,P_id])
+    lbl = r'$\rm P / P_{\rm max} (ISF)$'
+    
+    ax.plot(x, y, c='magenta', ls='-', lw=2, label=lbl)
+
+    # CSF phr
+    x = data_CSF[:,time_id] * delt
+    y = data_CSF[:,P_id] / np.max(data_CSF[:,P_id])
+    lbl = r'$\rm P / P_{\rm max} (CSF)$'
+    
+    ax.plot(x, y, c='magenta', ls='-.', lw=2, label=lbl)
+
+    # tau
+    x = data_PAR[:,time_id] * delt
+    y = data_PAR[:,T_id] / np.max(data_PAR[:,T_id])
+    lbl = r'$\rm T / T_{\rm max}$'
+    
+    ax.plot(x, y, c='g', ls='--', lw=2, label=lbl)
 
     ax.legend(loc='upper center', borderpad=.4, labelspacing=.1, borderaxespad=.1, columnspacing=.2, fontsize=16, ncol=3)
 
@@ -135,8 +154,8 @@ def main():
     ax.set_xlim(0.0,np.max(x))
     ax.set_xticks([0,5,10])
     ax.get_xaxis().set_major_formatter(matplotlib.ticker.ScalarFormatter())
-    ax.set_xlabel(names[T_id])
-    ax.set_ylim(0,1.3)
+    ax.set_xlabel(r'$\rm time ~{\rm (yr)}$')
+    ax.set_ylim(0,1.4)
     ax.set_yticks(np.linspace(0, 1, 3, endpoint=True))
     #ax.set_ylabel('y', color='black', fontsize = 24)
 

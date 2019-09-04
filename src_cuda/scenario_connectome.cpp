@@ -63,8 +63,8 @@ void ScenarioConnectome::reset() {
   vlen = vlen_1 = vlen_2 = 0.0;
   vvol = vvol_1 = 0.0;
 
-  for (int ag_id=0; ag_id<num_agents; ag_id++)
-    init_val[ag_id] = -1.0;
+  init_val.clear();
+  init_val.resize(num_agents,-1);
 
   prop.Dtau_max = prop.diff_tau = 0.0;
   prop.dnt = 0.0;
@@ -90,19 +90,39 @@ void ScenarioConnectome::reset() {
 
   newton_flux = 1;
 
+  // set tissue
+  tissue.clear();
+  tissue.resize(num_types);
+  for (int i=0; i<num_types; i++)
+    tissue[i] = 1 << i;
+
   input = new Input();
   init = new Init();
   comm = new Comm(this);
   output = new Output();
   region = new Region();
 
-  init_val.clear();
-  init_val.resize(num_agents);
-
 }
 
 /* ----------------------------------------------------------------------*/
 void ScenarioConnectome::allocations() {
+  for (auto &a: x) {
+    a.clear();
+    a.resize(nall);
+  }
+
+  tag.clear();
+  tag.resize(nall);
+
+  type.clear();
+  type.resize(nall);
+
+  group.clear();
+  group.resize(nall);
+
+  is_loc.clear();
+  is_loc.resize(nall);
+
   for (auto &a: agent) {
     a.clear();
     a.resize(nall);
@@ -127,6 +147,7 @@ void ScenarioConnectome::allocations() {
   // set all voxel types as EMP and groups as 0
   fill(type.begin(),type.end(),tissue[EMP]);
   fill(group.begin(),group.end(),0);
+
   for (auto &a: arr_prop.Dtau)
     fill(a.begin(),a.end(),prop.Dtau_max);
 

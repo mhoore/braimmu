@@ -9,16 +9,22 @@ For running this code, your system needs message passing interface (mpi) compile
 
 3- Run an example simulation using one of input scripts, in.run or in.cuda in ./example/ directory:
 Note: number of cores should match the partitions specifications inside the input script
->> mpirun -use-hwthread-cpus -np 4 ../src/braimmu.exe in.run
+>> mpirun -np 4 ../src/braimmu.exe connectome conn.run
 
-4- The nifti images as initial conditions have been taken from "Neuroimaging and Surgical Technologies Lab", with web address:"http://nist.mni.mcgill.ca/?p=904"; the original file names are:
-ICBM 2009c Nonlinear Symmetric 1×1x1mm template: NIFTI 55MB
-./base/wm.nii  -> white matter: mni_icbm152_wm_tal_nlin_sym_09c.nii
-./base/gm.nii  -> gray matter: mni_icbm152_gm_tal_nlin_sym_09c.nii
-./base/csf.nii -> cerebrospinal fluid: mni_icbm152_csf_tal_nlin_sym_09c.nii
+4- The brain atlases are used as initial conditions, and taken from multiple sources:
 
-Courtesy of Dr. Vladimir S. Fonov, McGill University, Montreal Neurological Institute, Brain Imaging Center
-./base/voi.nii -> volume of interest (VOI): mni_icbm152_lob_tal_nlin_sym_09c.nii
-./base/voi.txt -> VOIs descriptions
+* Neuroimaging and Surgical Technologies Lab, "http://nist.mni.mcgill.ca/?p=904":
+  ICBM 2009c Nonlinear Symmetric 1×1x1mm template: NIFTI 55MB
+  ./base/wm.nii  --> white matter: mni_icbm152_wm_tal_nlin_sym_09c.nii
+  ./base/gm.nii  --> gray matter: mni_icbm152_gm_tal_nlin_sym_09c.nii
+  ./base/csf.nii --> cerebrospinal fluid: mni_icbm152_csf_tal_nlin_sym_09c.nii
+
+* Courtesy of Dr. Vladimir S. Fonov, McGill University, Montreal Neurological Institute, Brain Imaging Center:
+  ./base/voi.nii --> volume of interest (VOI): mni_icbm152_lob_tal_nlin_sym_09c.nii
+  ./base/voi.txt --> VOIs descriptions
+
+* UCLA Brain Mapping Center, "http://www.bmap.ucla.edu/portfolio/atlases/ICBM_DTI-81_Atlas/":
+  ICBM DTI-81 Atlas
+  ./base/rgb.nii --> neural connectome: ICBM_COLOR.nii
 
 5- Enjoy!
