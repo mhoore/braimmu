@@ -38,8 +38,6 @@ class VirtualBrain {
     return i + (nvl[0] + 2) * (j + (nvl[1] + 2) * k);
   }
 
-  friend class Input;
-
   int me,nproc;
 
   array<int, ndim> npart; // number of partitions in each dimension
