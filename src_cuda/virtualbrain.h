@@ -8,6 +8,8 @@
 #include "region.h"
 #include "input.h"
 
+#include <memory>
+
 using namespace std;
 
 class VirtualBrain {
@@ -72,11 +74,11 @@ class VirtualBrain {
   MPI_Comm world;
 
   // classes
-  Input *input;
-  Init *init;
-  Comm *comm;
-  Output *output;
-  Region *region;
+  std::unique_ptr<Input> input;
+  std::unique_ptr<Init> init;
+  std::unique_ptr<Comm> comm;
+  std::unique_ptr<Output> output;
+  std::unique_ptr<Region> region;
 
   string scenario;
 
