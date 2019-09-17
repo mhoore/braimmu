@@ -43,6 +43,12 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
 ScenarioConnectome::~ScenarioConnectome() {
   if(nim)
     nifti_image_free(nim);
+
+  delete region;
+  delete output;
+  delete comm;
+  delete init;
+  delete input;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -90,11 +96,11 @@ void ScenarioConnectome::reset() {
   for (int i=0; i<num_types; i++)
     tissue[i] = 1 << i;
 
-  input.reset(new Input());
-  init.reset(new Init());
-  comm.reset(new Comm(this));
-  output.reset(new Output());
-  region.reset(new Region());
+  input = new Input();
+  init = new Init();
+  comm = new Comm(this);
+  output = new Output();
+  region = new Region();
 
 }
 
