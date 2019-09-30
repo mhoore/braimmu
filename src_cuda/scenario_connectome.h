@@ -43,8 +43,6 @@ class ScenarioConnectome : public VirtualBrain {
 
   void reset();
 
- private:
-
   struct properties {
     double Dtau_max, diff_tau; // maximum diffusion of tau protein
     double dnt; // neuronal death rate due to tau accumulation
@@ -64,6 +62,8 @@ class ScenarioConnectome : public VirtualBrain {
     double dna; // neuronal death rate due to astogliosis
     double dnf; // neuronal death rate due to fibrillization
   } prop;
+
+ private:
 
   struct array_properties {
     array<vector<double>, ndim> Dtau; // diffusion tensor for tau protein

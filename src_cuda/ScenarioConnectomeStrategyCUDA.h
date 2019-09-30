@@ -5,7 +5,6 @@
 class ScenarioConnectomeStrategyCUDA
 	: public ScenarioConnectomeAbstractStrategy
 {
-
   protected:
 
   struct array_properties {
@@ -17,9 +16,12 @@ class ScenarioConnectomeStrategyCUDA
 
 	public:
 
-		ScenarioConnectomeStrategyCPU(ScenarioConnectome* pthis)
-		 	: ScenarioConnectomeAbstractStrategy(pthis) {}
+		ScenarioConnectomeStrategyCUDA(ScenarioConnectome* pthis);
+		~ScenarioConnectomeStrategyCUDA() override;
 
 	void update() override;
 	void derivatives() override;
+
+	void push() override;
+	void pop() override;
 };

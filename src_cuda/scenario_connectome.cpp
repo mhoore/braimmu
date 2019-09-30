@@ -174,6 +174,7 @@ void ScenarioConnectome::integrate(int Nrun) {
   N0 = N1 = 0;
 
   int iter = 0;
+	m_strategy->push();
   while (iter < Nrun) {
 
     comm->forward_comm(this);
@@ -189,10 +190,13 @@ void ScenarioConnectome::integrate(int Nrun) {
     step++;
     iter++;
 
-    if (output->do_dump)
-      output->dump(this);
     if (output->severy > 0)
+		{
+				m_strategy->pop();
+				if (output->do_dump)
+					output->dump(this);
       output->statistics(this);
+		}
 
     if (step % Nlog == 0) {
       MPI_Barrier(world);
@@ -239,6 +243,7 @@ void ScenarioConnectome::integrate(int Nrun) {
     logfile.close();
   }
 
+	m_strategy.pop():
 }
 
 /* ----------------------------------------------------------------------*/

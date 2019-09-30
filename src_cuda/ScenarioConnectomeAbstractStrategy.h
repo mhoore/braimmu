@@ -15,5 +15,8 @@ class ScenarioConnectomeAbstractStrategy
 	virtual void update() = 0;
 	virtual void derivatives() = 0;
 
+	virtual void push() {};
+	virtual void pop() {};
+
 	virtual ~ScenarioConnectomeAbstractStrategy() {}
 };
