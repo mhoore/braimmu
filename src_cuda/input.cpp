@@ -182,6 +182,21 @@ void Input::execute_command(VirtualBrain *brn) {
     }
   }
 
+  /* Command: strategy: for integration strategy
+   * syntax: strategy keyword
+   * example: strategy cuda
+   * arguments:
+   * keywords: cuda, openACC
+   * default: cuda */
+  else if (!command.compare("strategy")) {
+    if (narg < 1) {
+      printf("Error: strategy \n");
+      exit(1);
+    }
+
+    brn->strategy = arg[0];
+  }
+
   /* Command: read_mri - assigning an mri nifti image file (.nii) for
    * the topology of the system.
    * syntax: read_mri keyword file.nii thres_val max_val

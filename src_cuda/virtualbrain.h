@@ -79,6 +79,7 @@ class VirtualBrain {
   std::unique_ptr<Region> region;
 
   string scenario;
+  string strategy = "cpu";
 
   vector<double> init_val;
 
