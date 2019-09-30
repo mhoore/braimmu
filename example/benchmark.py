@@ -12,6 +12,7 @@ from matplotlib.ticker import MultipleLocator
 import matplotlib.mlab as mlab
 from matplotlib.mlab import griddata
 import subprocess
+import sys
 
 from tempfile import mkstemp
 from shutil import move
@@ -47,13 +48,12 @@ Nproc = ( ( 1, 1,  1, 1),
           ( 6, 1,  6, 1),
           ( 8, 1,  8, 1),
           (10, 1, 10, 1),
-          (14, 1, 14, 1),
+          (12, 2,  6, 1),
           ( 2, 2,  1, 1),
           ( 4, 2,  2, 1),
-          ( 8, 2,  4, 1),
-          (12, 2,  6, 1) )
+          ( 8, 2,  4, 1) )
 
-method = ('cuda', )
+method = ('connectome', )
 exes = ('../src_cuda/braimmu.exe', )
 
 def main():
@@ -61,11 +61,10 @@ def main():
     mu_speed = np.zeros((len(Nproc),len(method)),dtype=np.float32)
     sig_speed = np.zeros((len(Nproc),len(method)),dtype=np.float32)
 
-    fw = open(fwname, 'w')
-    fw.write('# benchmark results \n')
-    line = 'ncore nx ny nz method mu sig\n'
-    fw.write(line)
-    fw.close()
+    with open(fwname, 'w') as fw:
+        fw.write('# benchmark results \n')
+        line = 'ncore nx ny nz method mu sig\n'
+        fw.write(line)
     
     for sim in range(len(method)):
         for it in range(len(Nproc)):
@@ -74,20 +73,26 @@ def main():
             subst = 'partition %i %i %i \n' % (nx,ny,nz)
             
             # setup the partitions in the input file
-            fname = './in.run'
+            fname = './conn-eurohack19.run'
             replace(fname,'partition', subst)
 
             print(ncore, nx,ny,nz, method[sim])
             
             #command = 'mpirun -use-hwthread-cpus -np %i %s %s' % (ncore, exes[sim], fname)
-            command = 'mpirun -np %i %s %s' % (ncore, exes[sim], fname)
+            command = 'srun -n %i %s %s %s' % (ncore, exes[sim], method[sim], fname)
             print(command)
             p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
-            p.wait()
+            out, err = p.communicate()
+            if p.returncode != 0:
+                print('srun failed; stderr follow')
+                print('--- Standard Error ---')
+                print(err)
+                print('--- Standard Output ---')
+                print(out)
+                sys.exit(1)
             
-            fr = open ( 'log.braimmu',"r")
-            llist = fr.readlines()
-            fr.close()
+            with open('log.braimmu',"r") as fr:
+                llist = fr.readlines()
 
             print(llist[-1])
             
@@ -97,10 +102,9 @@ def main():
             
             print(mu_speed[it,sim], sig_speed[it,sim])
             
-            fw = open(fwname, 'a')
-            line = '%i %i %i %i %s %g %g\n' % (ncore,nx,ny,nz,method[sim],mu_speed[it,sim],sig_speed[it,sim])
-            fw.write(line)
-            fw.close()
+            with open(fwname, 'a') as fw:
+                line = '%i %i %i %i %s %g %g\n' % (ncore,nx,ny,nz,method[sim],mu_speed[it,sim],sig_speed[it,sim])
+                fw.write(line)
 
 if __name__ == '__main__':
     main()
