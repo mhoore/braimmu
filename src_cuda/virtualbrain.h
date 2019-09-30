@@ -79,7 +79,7 @@ class VirtualBrain {
   std::unique_ptr<Region> region;
 
   string scenario;
-  int strg_flag = 0;
+  string strategy = "cuda";
 
   vector<double> init_val;
 

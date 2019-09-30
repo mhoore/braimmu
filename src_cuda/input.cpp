@@ -194,8 +194,8 @@ void Input::execute_command(VirtualBrain *brn) {
       exit(1);
     }
 
-    if (!arg[0].compare("cuda")) brn->strg_flag = 0;
-    else if (!arg[0].compare("openACC")) brn->strg_flag = 1;
+    if (!arg[0].compare("cuda")) brn->strategy = "cuda";
+    else if (!arg[0].compare("openACC")) brn->strategy = "openACC";
     else {
       printf("Error: strategy keyword not recognized! \n");
       exit(1);
