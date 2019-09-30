@@ -43,12 +43,6 @@ ScenarioGeometry::ScenarioGeometry(int narg, char** arg, int rk, int np) {
 ScenarioGeometry::~ScenarioGeometry() {
   if(nim)
     nifti_image_free(nim);
-
-  delete region;
-  delete output;
-  delete comm;
-  delete init;
-  delete input;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -93,11 +87,11 @@ void ScenarioGeometry::reset() {
   for (int i=0; i<num_types; i++)
     tissue[i] = 1 << i;
 
-  input = new Input();
-  init = new Init();
-  comm = new Comm(this);
-  output = new Output();
-  region = new Region();
+  input.reset(new Input());
+  init.reset(new Init());
+  comm.reset(new Comm(this));
+  output.reset(new Output());
+  region.reset(new Region());
 
 }
 
