@@ -71,13 +71,6 @@ class ScenarioConnectome : public VirtualBrain {
 
   array<vector<double>, num_agents> agent, deriv;
 
-  uint8_t * ptr8;
-  int16_t *ptr16;
-  int32_t *ptr32;
-  float *ptrf;
-  double *ptrd;
-  uint8_t *ptr_rgb;
-
 	std::unique_ptr<ScenarioConnectomeAbstractStrategy> m_strategy;
 
 	friend class ScenarioConnectomeStrategyCPU;

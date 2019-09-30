@@ -291,6 +291,13 @@ void ScenarioConnectome::mri_topology(nifti_image *nim) {
   if (!nim)
     return;
 
+  uint8_t * ptr8;
+  int16_t *ptr16;
+  int32_t *ptr32;
+  float *ptrf;
+  double *ptrd;
+  uint8_t *ptr_rgb;
+
   double conver_fac = 1.0;
   if (nim->xyz_units == NIFTI_UNITS_METER)
     conver_fac = 1.e6;
