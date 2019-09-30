@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include "scenario_connectome.h"
 
 #include "ScenarioConnectomeAbstractStrategy.h"
@@ -243,7 +244,7 @@ void ScenarioConnectome::integrate(int Nrun) {
     logfile.close();
   }
 
-	m_strategy.pop():
+	m_strategy->pop();
 }
 
 /* ----------------------------------------------------------------------*/

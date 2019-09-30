@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include "scenario_geometry.h"
 
 using namespace std;

@@ -5,12 +5,15 @@
 class ScenarioConnectomeStrategyCUDA
 	: public ScenarioConnectomeAbstractStrategy
 {
-  protected:
+
+  public:
 
   struct array_properties {
     double *Dtau;
-  } arr_prop;
-
+  };
+  
+  protected:
+  array_properties arr_prop;
   double *agent, *deriv;
   int *type;
 
