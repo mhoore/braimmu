@@ -2,6 +2,7 @@
 
 #include "ScenarioConnectomeAbstractStrategy.h"
 #include "ScenarioConnectomeStrategyCPU.h"
+#include "ScenarioConnectomeStrategyCUDA.h"
 
 using namespace std;
 
@@ -27,6 +28,8 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
 
   if (strategy == "cpu")
     m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
+  else if (strategy == "cuda")
+    m_strategy.reset(new ScenarioConnectomeStrategyCUDA(this));
   else
   {
     printf("Unknown integration strategy: '%s'\n", strategy.c_str());
