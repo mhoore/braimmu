@@ -25,7 +25,13 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
   scenario = arg[1];
   input->file(arg[2], this);
 
-  m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
+  if (strategy == "cpu")
+    m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
+  else
+  {
+    printf("Unknown integration strategy: '%s'\n", strategy.c_str());
+	exit(1);
+  }
 
   // output initial step
   if (!me)
