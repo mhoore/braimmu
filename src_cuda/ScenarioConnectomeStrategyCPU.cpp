@@ -1,9 +1,22 @@
+#include "ScenarioConnectomeStrategyCPU.h"
+
 #include "scenario_connectome.h"
 
 using namespace std;
 
 /* ----------------------------------------------------------------------*/
-void ScenarioConnectome::derivatives() {
+void ScenarioConnectomeStrategyCPU::derivatives() {
+
+	using namespace ScenarioConnectomeAgents;
+
+	auto &deriv = m_this->deriv;
+	auto &type = m_this->type;
+	auto &tissue = m_this->tissue;
+	auto &nvl = m_this->nvl;
+	auto &prop = m_this->prop;
+	auto &agent = m_this->agent;
+	const bool newton_flux = m_this->newton_flux;
+	auto &arr_prop = m_this->arr_prop;
 
   // set derivatives of all voxels to zero
   for (int ag_id=0; ag_id<num_agents; ag_id++)
@@ -13,7 +26,7 @@ void ScenarioConnectome::derivatives() {
   for (int kk=1; kk<nvl[2]+1; kk++)
     for (int jj=1; jj<nvl[1]+1; jj++)
       for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = find_id(ii,jj,kk);
+        int i = m_this->find_id(ii,jj,kk);
         if (type[i] & tissue[EMP]) continue;
 
         // direct function or time derivatives
@@ -56,20 +69,20 @@ void ScenarioConnectome::derivatives() {
           // circadian rhythm
           if (prop.c_cir > 0)
             deriv[cir][i] = - prop.C_cir * prop.c_cir * prop.omega_cir
-                            * sin(prop.omega_cir * dt * step);
+                            * sin(prop.omega_cir * m_this->dt * m_this->step);
         }
 
         // spatial derivatives: fluxes
         int n_ngh, ngh[6];
-        ngh[0] = find_id(ii+1,jj,kk);
-        ngh[1] = find_id(ii,jj+1,kk);
-        ngh[2] = find_id(ii,jj,kk+1);
+        ngh[0] = m_this->find_id(ii+1,jj,kk);
+        ngh[1] = m_this->find_id(ii,jj+1,kk);
+        ngh[2] = m_this->find_id(ii,jj,kk+1);
         n_ngh = 3;
 
         if (!newton_flux) {
-          ngh[3] = find_id(ii-1,jj,kk);
-          ngh[4] = find_id(ii,jj-1,kk);
-          ngh[5] = find_id(ii,jj,kk-1);
+          ngh[3] = m_this->find_id(ii-1,jj,kk);
+          ngh[4] = m_this->find_id(ii,jj-1,kk);
+          ngh[5] = m_this->find_id(ii,jj,kk-1);
           n_ngh = 6;
         }
 
@@ -137,18 +150,20 @@ void ScenarioConnectome::derivatives() {
 }
 
 /* ----------------------------------------------------------------------*/
-void ScenarioConnectome::update() {
+void ScenarioConnectomeStrategyCPU::update() {
+
+	using namespace ScenarioConnectomeAgents;
 
   // update local voxels
-  for (int kk=1; kk<nvl[2]+1; kk++)
-    for (int jj=1; jj<nvl[1]+1; jj++)
-      for (int ii=1; ii<nvl[0]+1; ii++) {
-        int i = find_id(ii,jj,kk);
-        if (type[i] & tissue[EMP]) continue;
+  for (int kk=1; kk<m_this->nvl[2]+1; kk++)
+    for (int jj=1; jj<m_this->nvl[1]+1; jj++)
+      for (int ii=1; ii<m_this->nvl[0]+1; ii++) {
+        int i = m_this->find_id(ii,jj,kk);
+        if (m_this->type[i] & m_this->tissue[EMP]) continue;
 
         // time integration (Euler's scheme)
         for (int ag_id=0; ag_id<num_agents; ag_id++)
-          agent[ag_id][i] += deriv[ag_id][i] * dt;
+          m_this->agent[ag_id][i] += m_this->deriv[ag_id][i] * m_this->dt;
       }
 
 }

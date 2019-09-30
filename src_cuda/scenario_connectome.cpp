@@ -1,5 +1,8 @@
 #include "scenario_connectome.h"
 
+#include "ScenarioConnectomeAbstractStrategy.h"
+#include "ScenarioConnectomeStrategyCPU.h"
+
 using namespace std;
 
 /* ----------------------------------------------------------------------*/
@@ -21,6 +24,8 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
 
   scenario = arg[1];
   input->file(arg[2], this);
+
+  m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
 
   // output initial step
   if (!me)
@@ -164,14 +169,14 @@ void ScenarioConnectome::integrate(int Nrun) {
 
     comm->forward_comm(this);
 
-    derivatives();
+    m_strategy->derivatives();
 
     if (newton_flux)
       comm->reverse_comm(this);
 
     // communicate bond connections
 
-    update();
+    m_strategy->update();
     step++;
     iter++;
 

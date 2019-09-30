@@ -16,8 +16,6 @@ class VirtualBrain {
  public:
   virtual void allocations() = 0;
   virtual void integrate(int) = 0;
-  virtual void update() = 0;
-  virtual void derivatives() = 0;
   virtual int set_property(string,string) = 0;
   virtual int find_agent(string) = 0;
   virtual void set_parameters() = 0;

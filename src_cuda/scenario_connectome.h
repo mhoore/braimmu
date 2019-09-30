@@ -3,7 +3,16 @@
 
 #include "virtualbrain.h"
 
+class ScenarioConnectomeAbstractStrategy;
+
 using namespace std;
+namespace ScenarioConnectomeAgents
+{
+  enum {mic = 0,neu,sAb,fAb,ast,phr,tau,cir, num_agents};
+  const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","phr","tau","cir"};
+}
+
+using namespace ScenarioConnectomeAgents;
 
 class ScenarioConnectome : public VirtualBrain {
  public:
@@ -12,8 +21,6 @@ class ScenarioConnectome : public VirtualBrain {
 
   void allocations();
   void integrate(int);
-  void update();
-  void derivatives();
   int set_property(string,string);
   int find_agent(string);
   void set_parameters();
@@ -37,8 +44,6 @@ class ScenarioConnectome : public VirtualBrain {
   void reset();
 
  private:
-  enum {mic = 0,neu,sAb,fAb,ast,phr,tau,cir, num_agents};
-  const string ag_str[num_agents] = {"mic","neu","sAb","fAb","ast","phr","tau","cir"};
 
   struct properties {
     double Dtau_max, diff_tau; // maximum diffusion of tau protein
@@ -73,6 +78,9 @@ class ScenarioConnectome : public VirtualBrain {
   double *ptrd;
   uint8_t *ptr_rgb;
 
+	std::unique_ptr<ScenarioConnectomeAbstractStrategy> m_strategy;
+
+	friend class ScenarioConnectomeStrategyCPU;
 };
 
 #endif

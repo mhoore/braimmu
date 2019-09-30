@@ -1,9 +1,10 @@
 SHELL = /bin/sh
 # specify flags and libraries needed for your compiler
-CC=CC
+CC=mpic++
 CCFLAGS=-g -O3
 LDFLAGS=
-OBJ=main.o scenario_connectome.o scenario_geometry.o input.o init.o comm.o output.o region.o nifti1_io.o znzlib.o strategy.o
+OBJ=main.o scenario_connectome.o scenario_geometry.o input.o init.o comm.o output.o region.o nifti1_io.o znzlib.o \
+	ScenarioConnectomeStrategyCPU.o
 EXE=braimmu.exe
 
 all: $(EXE)
