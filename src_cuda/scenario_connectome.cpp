@@ -191,16 +191,10 @@ void ScenarioConnectome::integrate(int Nrun) {
     step++;
     iter++;
 
-    if (output->severy > 0)
-		{
-				m_strategy->pop();
-				if (output->do_dump)
-					output->dump(this);
-      output->statistics(this);
-		}
-
     if (step % Nlog == 0) {
+      m_strategy->pop();
       MPI_Barrier(world);
+
       double t2 = MPI_Wtime();
       if (!me) {
         double speed = float(Nlog)/(t2-t1);
@@ -219,9 +213,16 @@ void ScenarioConnectome::integrate(int Nrun) {
         sig0 = sig1;
 
         printf(buf);
-
       }
+
       t1 = t2;
+    }
+
+    if (!(iter % output->severy)) {
+      m_strategy->pop();
+      if (output->do_dump)
+        output->dump(this);
+      output->statistics(this);
     }
 
   }
