@@ -191,7 +191,7 @@ double dt, int step)
           double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
 
           // diffusion of tau
-          double dum = 0.5 * (arr_prop.Dtau[ ndim * i + d] + arr_prop.Dtau[ndim * j + d]) * del_phr;
+          double dum = 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
           deriv[phr * nall + i] -= dum;
           /*if (newton_flux)*/
           /*  deriv[phr][j] += dum;*/
