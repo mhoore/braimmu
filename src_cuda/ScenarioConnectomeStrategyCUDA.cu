@@ -95,9 +95,12 @@ void ScenarioConnectomeStrategyCUDA::pop()
 
 using namespace ScenarioConnectomeAgents;
 
-static __global__ void zeroKernel(int* data, size_t n)
+static __global__ void zeroKernel(double* data, size_t n)
 {
-	data[threadIdx.x + blockIdx.x*blockDim.x] = 0;
+	int* tmp = (int*)data;
+	const int id = threadIdx.x + blockIdx.x*blockDim.x;
+	tmp[id] = 0;
+	tmp[id+n] = 0;
 }
 
 /* ----------------------------------------------------------------------*/
@@ -105,7 +108,7 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 
 	static constexpr int BLOCK_DIM = 128;
   // set derivatives of all voxels to zero
-	zeroKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>((int*)deriv, m_this->nall);
+	zeroKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(deriv, m_this->nall);
 
 	const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
 	derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
