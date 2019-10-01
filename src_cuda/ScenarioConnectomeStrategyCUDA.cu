@@ -170,79 +170,66 @@ double dt, int step)
                             * sin(prop.omega_cir * dt * step);
         }
 
-        // spatial derivatives: fluxes
-        int n_ngh, ngh[6];
-        ngh[0] = find_id(ii+1,jj,kk);
-        ngh[1] = find_id(ii,jj+1,kk);
-        ngh[2] = find_id(ii,jj,kk+1);
-        n_ngh = 3;
+#pragma unroll
+		for(int s = -1; s <= 1; s+=2)
+		{
+			for (int d=0; d < 3; d+=1) {
+			  const int j = find_id(ii +s*(d==0),jj +s*(d==1),kk +s*(d==2));
 
-        /*if (!newton_flux) {*/
-          ngh[3] = find_id(ii-1,jj,kk);
-          ngh[4] = find_id(ii,jj-1,kk);
-          ngh[5] = find_id(ii,jj,kk-1);
-          n_ngh = 6;
-        /*}*/
+			  if (type[j] & tissue(EMP)) continue;
 
-        for (int c=0; c<n_ngh; ++c) {
-          int j = ngh[c];
-          int d = c;
-          if (c >= 3)
-            d = c - 3;
+			  double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
 
-          if (type[j] & tissue(EMP)) continue;
+			  // diffusion of tau
+			  double dum = 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
+			  deriv[phr * nall + i] -= dum;
+			  /*if (newton_flux)*/
+			  /*  deriv[phr][j] += dum;*/
 
-          double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
+			  double del_sAb = agent[sAb * nall + i] - agent[sAb * nall + j];
 
-          // diffusion of tau
-          double dum = 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
-          deriv[phr * nall + i] -= dum;
-          /*if (newton_flux)*/
-          /*  deriv[phr][j] += dum;*/
+			  // diffusion of sAb
+			  dum = prop.D_sAb * del_sAb;
+			  deriv[sAb * nall + i] -= dum;
+			  /*if (newton_flux)*/
+			  /*  deriv[sAb][j] += dum;*/
 
-          double del_sAb = agent[sAb * nall + i] - agent[sAb * nall + j];
+			  // only in parenchyma
+			  if (type[i] & tissue(WM) || type[i] & tissue(GM))
+				if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
+				  double del_fAb = agent[fAb * nall + i] - agent[fAb * nall + j];
+				  double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
 
-          // diffusion of sAb
-          dum = prop.D_sAb * del_sAb;
-          deriv[sAb * nall + i] -= dum;
-          /*if (newton_flux)*/
-          /*  deriv[sAb][j] += dum;*/
+				  // migration of microglia toward higher sAb concentrations
+				  dum = prop.cs * del_sAb;
+				  if (del_sAb > 0.0)
+					dum *= agent[mic * nall + j];
+				  else
+					dum *= agent[mic * nall + i];
 
-          // only in parenchyma
-          if (type[i] & tissue(WM) || type[i] & tissue(GM))
-            if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
-              double del_fAb = agent[fAb * nall + i] - agent[fAb * nall + j];
-              double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
+				  deriv[mic * nall + i] += dum;
+				  /*if (newton_flux)*/
+				  /*  deriv[mic][j] -= dum;*/
 
-              // migration of microglia toward higher sAb concentrations
-              dum = prop.cs * del_sAb;
-              if (del_sAb > 0.0)
-                dum *= agent[mic * nall + j];
-              else
-                dum *= agent[mic * nall + i];
+				  // migration of microglia toward higher fAb concentrations
+				  dum = prop.cf * del_fAb;
+				  if (del_fAb > 0.0)
+					dum *= agent[mic * nall + j];
+				  else
+					dum *= agent[mic * nall + i];
 
-              deriv[mic * nall + i] += dum;
-              /*if (newton_flux)*/
-              /*  deriv[mic][j] -= dum;*/
+				  deriv[mic * nall + i] += dum;
+				  /*if (newton_flux)*/
+				  /*  deriv[mic][j] -= dum;*/
 
-              // migration of microglia toward higher fAb concentrations
-              dum = prop.cf * del_fAb;
-              if (del_fAb > 0.0)
-                dum *= agent[mic * nall + j];
-              else
-                dum *= agent[mic * nall + i];
-
-              deriv[mic * nall + i] += dum;
-              /*if (newton_flux)*/
-              /*  deriv[mic][j] -= dum;*/
-
-              // diffusion of microglia
-              dum = prop.D_mic * del_mic;
-              deriv[mic * nall + i] -= dum;
-              /*if (newton_flux)*/
-              /*  deriv[mic][j] += dum;*/
-      }
-    }
+				  // diffusion of microglia
+				  dum = prop.D_mic * del_mic;
+				  deriv[mic * nall + i] -= dum;
+				  /*if (newton_flux)*/
+				  /*  deriv[mic][j] += dum;*/
+		  }
+		}
+		}
 	}
 }
 
