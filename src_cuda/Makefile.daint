@@ -17,7 +17,7 @@ $(EXE): $(OBJ)
 
 ScenarioConnectomeStrategyCUDA.o: ScenarioConnectomeStrategyCUDA.h scenario_connectome.h ScenarioConnectomeAbstractStrategy.h
 %.o: %.cu
-	nvcc -I/opt/cray/pe/mpt/7.7.2/gni/mpich-gnu/5.1/include/ -arch=compute_60 -code=sm_60 $(CCFLAGS) -c $<
+	nvcc -arch=compute_60 -code=sm_60 $(CCFLAGS) -c $<
 
 clean:
 	rm -rf $(OBJ) $(EXE) main.o
