@@ -16,8 +16,10 @@ static __device__ constexpr int tissue(int type)
 	return 1<<type;
 }
 
-static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nalli,
+static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
 double dt, int step);
+
+static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall);
 
 ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectome* pthis)
 	: ScenarioConnectomeAbstractStrategy(pthis)
@@ -42,7 +44,6 @@ ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectom
 		cudaMemcpyToSymbol(nvl, (void*)m_this->nvl.data(), sizeof(int)*m_this->nvl.size())
 		);
 }
-
 
 ScenarioConnectomeStrategyCUDA::~ScenarioConnectomeStrategyCUDA()
 {
@@ -245,20 +246,25 @@ double dt, int step)
 /* ----------------------------------------------------------------------*/
 void ScenarioConnectomeStrategyCUDA::update() {
 
-	pop();
-	using namespace ScenarioConnectomeAgents;
+  using namespace ScenarioConnectomeAgents;
 
-  // update local voxels
-  for (int kk=1; kk<m_this->nvl[2]+1; kk++)
-    for (int jj=1; jj<m_this->nvl[1]+1; jj++)
-      for (int ii=1; ii<m_this->nvl[0]+1; ii++) {
-        int i = m_this->find_id(ii,jj,kk);
-        if (m_this->type[i] & m_this->tissue[EMP]) continue;
+	static constexpr int BLOCK_DIM = 128;
+	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
+	updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);
 
-        // time integration (Euler's scheme)
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          m_this->agent[ag_id][i] += m_this->deriv[ag_id][i] * m_this->dt;
-      }
+}
 
-	push();
+static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall)
+{
+	const int i = threadIdx.x + blockDim.x*blockIdx.x;
+	//const int jj = blockIdx.y +1;
+	//const int kk = blockIdx.z +1;
+  if(i < nall) {
+    
+    if (type[i] & tissue(EMP)) return;
+    
+    // time integration (Euler's scheme)
+    for (int ag_id=0; ag_id<ScenarioConnectomeAgents::num_agents; ag_id++)
+      agent[ag_id * nall + i] += deriv[ag_id * nall + i] * dt;
+  }
 }
