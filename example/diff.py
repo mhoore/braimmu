@@ -96,6 +96,7 @@ def main():
         exit(1)
     
     Nx[0], Nx[1], Nx[2], dum, Nx[3] = data.shape
+    print(data[sec[0],sec[1],sec[2],0,:])
     
     # dimensions
     diff = []
