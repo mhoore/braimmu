@@ -6,7 +6,7 @@ num_conn_max 10 # maximum number of bond connections
 strategy cuda
 
 ## special for cuda
-newton_flux yes
+newton_flux no
 
 timestep 0.0005 # day
 nevery 10 # nevery steps for bond connections

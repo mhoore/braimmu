@@ -2,7 +2,6 @@ import matplotlib
 #matplotlib.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
 import numpy as np
 import matplotlib.pyplot as pl
-from mpl_toolkits.mplot3d import axes3d
 from math import sqrt, floor, pi
 from matplotlib import rc, rcParams, cm
 from matplotlib.ticker import MultipleLocator
