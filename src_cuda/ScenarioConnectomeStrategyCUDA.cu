@@ -9,7 +9,7 @@
 using namespace std;
 
 __constant__ ScenarioConnectome::properties prop;
-__constant__ double nvl[ndim];
+__constant__ int nvl[ndim];
 
 static __device__ constexpr int tissue(int type)
 {
@@ -36,10 +36,10 @@ ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectom
 		);
 
 	CUDA_SAFE_CALL(
-		cudaMemcpyToSymbol(prop, &m_this->prop, sizeof(ScenarioConnectome::properties), cudaMemcpyHostToDevice)
+		cudaMemcpyToSymbol(prop, &m_this->prop, sizeof(ScenarioConnectome::properties))
 		);
 	CUDA_SAFE_CALL(
-		cudaMemcpyToSymbol(nvl, m_this->nvl.data(), sizeof(int)*m_this->nvl.size(), cudaMemcpyHostToDevice)
+		cudaMemcpyToSymbol(nvl, (void*)m_this->nvl.data(), sizeof(int)*m_this->nvl.size())
 		);
 }
 
@@ -103,8 +103,8 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 		);
 
 	static constexpr int BLOCK_DIM = 128;
-	const dim3 blocks(m_this->nvl[0]/BLOCK_DIM, m_this->nvl[1], m_this->nvl[2]);
-	derivativeKernel<<< BLOCK_DIM, blocks>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
+	const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
+	derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
 }
 
 static __device__ int find_id(int i, int j, int k)
