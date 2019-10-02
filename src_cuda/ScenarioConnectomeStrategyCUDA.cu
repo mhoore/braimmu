@@ -161,113 +161,86 @@ double dt, int step)
   //const int kk = blockIdx.z +1;
 	//if(ii < nvl[0]+1)
 	//{
-        //const int i = find_id(ii,jj,kk);
-        //if (type[i] & tissue(EMP)) return;
+  //const int i = find_id(ii,jj,kk);
+  //if (type[i] & tissue(EMP)) return;
+  // direct function or time derivatives
 
-        // direct function or time derivatives
+    // sAb, fAb, and tau efflux from CSF
+    if (type[i] & tissue(CSF)) {
+      deriv[sAb * nall + i] -= prop.es * agent[sAb * nall + i];
+      deriv[fAb * nall + i] -= prop.es * agent[fAb * nall + i];
+      deriv[phr * nall + i] -= prop.ephi * agent[phr * nall + i];
+    }
 
-        // sAb, fAb, and tau efflux from CSF
-        if (type[i] & tissue(CSF)) {
-          deriv[sAb * nall + i] -= prop.es * agent[sAb * nall + i];
-          deriv[fAb * nall + i] -= prop.es * agent[fAb * nall + i];
-          deriv[phr * nall + i] -= prop.ephi * agent[phr * nall + i];
-        }
-        // in parenchyma (WM and GM)
-        else {
-          double dum = prop.kp * agent[sAb * nall + i] * agent[fAb * nall + i]
+    // in parenchyma (WM and GM)
+    else {
+      double dum = prop.kp * agent[sAb * nall + i] * agent[fAb * nall + i]
                      + prop.kn * agent[sAb * nall + i] * agent[sAb * nall + i];
 
-          // sAb
-          deriv[sAb * nall + i] += agent[neu * nall + i] * agent[cir * nall + i]
+      // sAb
+      deriv[sAb * nall + i] += agent[neu * nall + i] * agent[cir * nall + i]
                             - dum
                             - prop.ds * agent[mic * nall + i] * agent[sAb * nall + i];
-          // fAb
-          deriv[fAb * nall + i] += dum
-                           - prop.df * agent[mic * nall + i] * agent[fAb * nall + i];
+      // fAb
+      deriv[fAb * nall + i] += dum
+                            - prop.df * agent[mic * nall + i] * agent[fAb * nall + i];
 
-          dum = prop.ktau * agent[phr * nall + i];
+      dum = prop.ktau * agent[phr * nall + i];
 
-          // tau protein phosphorylation due to fAb and neu
-          deriv[phr * nall + i] += prop.kphi * agent[fAb * nall + i] * agent[neu * nall + i]
-                         - dum;
+      // tau protein phosphorylation due to fAb and neu
+      deriv[phr * nall + i] += prop.kphi * agent[fAb * nall + i] * agent[neu * nall + i]
+                            - dum;
 
-          // tau tangle formation from phosphorylated tau
-          deriv[tau * nall + i] += dum;
+      // tau tangle formation from phosphorylated tau
+      deriv[tau * nall + i] += dum;
 
-          // neuronal death due to tau aggregation
-          deriv[neu * nall + i] -= prop.dnt * agent[tau * nall + i] * agent[neu * nall + i];
+      // neuronal death due to tau aggregation
+      deriv[neu * nall + i] -= prop.dnt * agent[tau * nall + i] * agent[neu * nall + i];
 
-          // astrogliosis
-          dum = agent[fAb * nall + i] * agent[mic * nall + i];
-          deriv[ast * nall + i] = prop.ka * (dum / (dum + prop.Ha) - agent[ast * nall + i]);
+      // astrogliosis
+      dum = agent[fAb * nall + i] * agent[mic * nall + i];
+      deriv[ast * nall + i] = prop.ka * (dum / (dum + prop.Ha) - agent[ast * nall + i]);
 
-          // circadian rhythm
-          if (prop.c_cir > 0)
-            deriv[cir * nall + i] = - prop.C_cir * prop.c_cir * prop.omega_cir
+      // circadian rhythm
+      if (prop.c_cir > 0)
+        deriv[cir * nall + i] = - prop.C_cir * prop.c_cir * prop.omega_cir
                             * sin(prop.omega_cir * dt * step);
-        }
+      }
 
-#pragma unroll
-		for(int s = -1; s <= 1; s+=2)
-		{
-			for (int d=0; d < 3; d+=1) {
-			  const int j = find_id(coord.x +s*(d==0),coord.y +s*(d==1),coord.z +s*(d==2));
+      #pragma unroll
+		  for(int s = -1; s <= 1; s+=2)
+			  for (int d=0; d < 3; d+=1) {
+			    const int j = find_id(coord.x +s*(d==0),coord.y +s*(d==1),coord.z +s*(d==2));
 
-			  if (type[j] & tissue(EMP)) continue;
+			    if (type[j] & tissue(EMP)) continue;
 
-			  double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
+			    double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
 
-			  // diffusion of tau
-			  double dum = 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
-			  deriv[phr * nall + i] -= dum;
-			  /*if (newton_flux)*/
-			  /*  deriv[phr][j] += dum;*/
+			    // diffusion of tau
+			    deriv[phr * nall + i] -= 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
 
-			  double del_sAb = agent[sAb * nall + i] - agent[sAb * nall + j];
+			    double del_sAb = agent[sAb * nall + i] - agent[sAb * nall + j];
 
-			  // diffusion of sAb
-			  dum = prop.D_sAb * del_sAb;
-			  deriv[sAb * nall + i] -= dum;
-			  /*if (newton_flux)*/
-			  /*  deriv[sAb][j] += dum;*/
+			    // diffusion of sAb
+			    deriv[sAb * nall + i] -= prop.D_sAb * del_sAb;
 
-			  // only in parenchyma
-			  if (type[i] & tissue(WM) || type[i] & tissue(GM))
-				if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
-				  double del_fAb = agent[fAb * nall + i] - agent[fAb * nall + j];
-				  double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
+			    // only in parenchyma
+			    if (type[i] & tissue(WM) || type[i] & tissue(GM))
+				  if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
+				    double del_fAb = agent[fAb * nall + i] - agent[fAb * nall + j];
+				    double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
 
-				  // migration of microglia toward higher sAb concentrations
-				  dum = prop.cs * del_sAb;
-				  if (del_sAb > 0.0)
-					dum *= agent[mic * nall + j];
-				  else
-					dum *= agent[mic * nall + i];
+				    // migration of microglia toward higher sAb concentrations
+				    deriv[mic * nall + i] += prop.cs * del_sAb * agent[mic * nall + ((del_sAb > 0.0) ? j : i)];
 
-				  deriv[mic * nall + i] += dum;
-				  /*if (newton_flux)*/
-				  /*  deriv[mic][j] -= dum;*/
+				    // migration of microglia toward higher fAb concentrations
+            deriv[mic * nall + i] += prop.cf * del_fAb * agent[mic * nall + ((del_fAb > 0.0) ? j : i)];
 
-				  // migration of microglia toward higher fAb concentrations
-				  dum = prop.cf * del_fAb;
-				  if (del_fAb > 0.0)
-					dum *= agent[mic * nall + j];
-				  else
-					dum *= agent[mic * nall + i];
-
-				  deriv[mic * nall + i] += dum;
-				  /*if (newton_flux)*/
-				  /*  deriv[mic][j] -= dum;*/
-
-				  // diffusion of microglia
-				  dum = prop.D_mic * del_mic;
-				  deriv[mic * nall + i] -= dum;
-				  /*if (newton_flux)*/
-				  /*  deriv[mic][j] += dum;*/
-		  }
-		}
-		}
-	}
+				    // diffusion of microglia
+				    deriv[mic * nall + i] -= prop.D_mic * del_mic;
+		      }
+		    }
+	  }
 }
 
 /* ----------------------------------------------------------------------*/
