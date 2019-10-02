@@ -165,9 +165,9 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 	derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
 }
 
-static __device__ int find_id(int i, int j, int k, int p = pitch.pDouble)
+static __device__ int find_id(int i, int j, int k)
 {
-	return i + (p) * (j + (nvl[1] + 2) * k);
+	return i + (pitch.pDouble) * (j + (nvl[1] + 2) * k);
 }
 
 static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
