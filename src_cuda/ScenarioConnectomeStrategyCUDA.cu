@@ -8,6 +8,12 @@
 
 using namespace std;
 
+struct Coord {
+  int x;
+  int y;
+  int z;
+};
+
 __constant__ ScenarioConnectome::properties prop;
 __constant__ int nvl[ndim];
 
@@ -118,8 +124,9 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 		cudaMemsetAsync(deriv, 0, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall)
 	);
 
-	const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-	derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
+	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
+	//derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
+  derivativeKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
 }
 
 static __device__ int find_id(int i, int j, int k)
@@ -127,16 +134,35 @@ static __device__ int find_id(int i, int j, int k)
 	return i + (nvl[0] + 2) * (j + (nvl[1] + 2) * k);
 }
 
+static __device__ Coord find_coord(int i)
+{
+  Coord coord;
+  coord.x = i % (nvl[0] + 2);
+  int dumi = (int) ((i - coord.x) / (nvl[0] + 2));
+  coord.y = dumi % (nvl[1] + 2);
+  coord.z = (int) ((dumi - coord.y) / (nvl[1] + 2));
+  
+  return coord;
+
+}
+
 static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
 double dt, int step)
 {
-	const int ii = threadIdx.x + blockDim.x*blockIdx.x +1;
-	const int jj = blockIdx.y +1;
-	const int kk = blockIdx.z +1;
-	if(ii < nvl[0]+1)
-	{
-        const int i = find_id(ii,jj,kk);
-        if (type[i] & tissue(EMP)) return;
+  const int i = threadIdx.x + blockDim.x*blockIdx.x;
+  Coord coord = find_coord(i);
+ 
+  if(i < nall) {
+
+    if (type[i] & tissue(EMP)) return;
+
+  //const int ii = threadIdx.x + blockDim.x*blockIdx.x +1;
+  //const int jj = blockIdx.y +1;
+  //const int kk = blockIdx.z +1;
+	//if(ii < nvl[0]+1)
+	//{
+        //const int i = find_id(ii,jj,kk);
+        //if (type[i] & tissue(EMP)) return;
 
         // direct function or time derivatives
 
@@ -185,7 +211,7 @@ double dt, int step)
 		for(int s = -1; s <= 1; s+=2)
 		{
 			for (int d=0; d < 3; d+=1) {
-			  const int j = find_id(ii +s*(d==0),jj +s*(d==1),kk +s*(d==2));
+			  const int j = find_id(coord.x +s*(d==0),coord.y +s*(d==1),coord.z +s*(d==2));
 
 			  if (type[j] & tissue(EMP)) continue;
 
