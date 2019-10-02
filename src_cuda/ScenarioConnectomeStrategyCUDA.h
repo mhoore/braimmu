@@ -11,11 +11,20 @@ class ScenarioConnectomeStrategyCUDA
   struct array_properties {
     double *Dtau;
   };
+
+  struct AllocPitch {
+	  size_t pDouble, pInt;
+  };
   
   protected:
   array_properties arr_prop;
   double *agent, *deriv;
   int *type;
+
+  AllocPitch m_allocPitch;
+
+	inline size_t nvx();
+	inline size_t nvyz();
 
 	public:
 
