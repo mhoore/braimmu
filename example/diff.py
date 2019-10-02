@@ -23,16 +23,16 @@ rc('font',**{'family':'sans-serif','serif':['Times'], 'weight': 'bold', 'size' :
 rc('text', usetex=True)
 rcParams.update({'figure.autolayout': True})
 
-if len(sys.argv) < 6:
+if len(sys.argv) < 3:
     print(sys.argv)
-    sys.exit("Error: check the arguments")
+    sys.exit("Error: usage: diff.py file1 file2")
 
 sec = []
 fr = sys.argv[1]
 fr0 = sys.argv[2]
-sec.append(int(sys.argv[3]))
-sec.append(int(sys.argv[4]))
-sec.append(int(sys.argv[5]))
+# sec.append(int(sys.argv[3]))
+# sec.append(int(sys.argv[4]))
+# sec.append(int(sys.argv[5]))
 
 x = []
 y = []
@@ -100,14 +100,10 @@ def main():
     print(data.shape)
     
     # dimensions
-    diff = []
-    diff.append(data[sec[0]-1,:,:,0,:] - data0[sec[0]-1,:,:,0,:])
-    diff.append(data[:,sec[1]-1,:,0,:] - data0[:,sec[1]-1,:,0,:])
-    diff.append(data[:,:,sec[2]-1,0,:] - data0[:,:,sec[2]-1,0,:])
+    diff = np.sum(np.abs(data[:,:,:,0,:-1]-data0[:,:,:,0,:-1]), axis=(0,1,2))
 
-    for i in range(3):
-        for me in range(Nx[3]-1):
-            print(i, agents[me], np.sum(diff[i][:,:,me]))
+    for me in range(Nx[3]-1):
+        print(me, agents[me], diff[me])
 
 if __name__ == '__main__':
     main()
