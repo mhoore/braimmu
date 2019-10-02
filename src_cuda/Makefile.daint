@@ -4,7 +4,7 @@ CC=CC
 CCFLAGS=-g -O3
 LDFLAGS=
 OBJ=main.o scenario_connectome.o scenario_geometry.o input.o init.o comm.o output.o region.o nifti1_io.o znzlib.o \
-	ScenarioConnectomeStrategyCPU.o ScenarioConnectomeStrategyCUDA.o
+	ScenarioConnectomeStrategyCPU.o ScenarioConnectomeStrategyCUDA.o ScenarioConnectomeStrategyCUDANewton.o
 EXE=braimmu.exe
 
 all: $(EXE)
@@ -15,7 +15,7 @@ $(EXE): $(OBJ)
 %.o: %.cpp pointers.h scenario_connectome.h scenario_geometry.h input.h init.h comm.h output.h region.h nifti1.h nifti1_io.h znzlib.h
 	$(CC) $(CCFLAGS) -c $<
 
-ScenarioConnectomeStrategyCUDA.o: ScenarioConnectomeStrategyCUDA.h scenario_connectome.h ScenarioConnectomeAbstractStrategy.h
+ScenarioConnectomeStrategyCUDA.o: ScenarioConnectomeStrategyCUDA.h ScenarioConnectomeStrategyCUDANewton.h scenario_connectome.h ScenarioConnectomeAbstractStrategy.h
 %.o: %.cu
 	nvcc -arch=compute_60 -code=sm_60 $(CCFLAGS) -c $<
 

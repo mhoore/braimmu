@@ -1,4 +1,4 @@
-#include "ScenarioConnectomeStrategyCUDA.h"
+#include "ScenarioConnectomeStrategyCUDANewton.h"
 #include "scenario_connectome.h"
 #include "cudaError.h"
 #include <cuda.h>
@@ -20,14 +20,14 @@ static __device__ constexpr int tissue(int type)
 }
 
 static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type,
-                                        const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
+                                        const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop,
                                         int nall, double dt, int step);
 
 static __global__ void updateKernel(double* agent, const double* deriv, const int* type,
-                                    const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
+                                    const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop,
                                     double dt, int nall);
 
-ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectome* pthis)
+ScenarioConnectomeStrategyCUDANewton::ScenarioConnectomeStrategyCUDANewton(ScenarioConnectome* pthis)
 	: ScenarioConnectomeAbstractStrategy(pthis)
 {
 	CUDA_SAFE_CALL( cudaMalloc(&arr_prop.Dtau, ndim*sizeof(double)*m_this->nall) );
@@ -38,7 +38,7 @@ ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectom
 	CUDA_SAFE_CALL(	cudaMemcpyToSymbol(nvl, (void*)m_this->nvl.data(), sizeof(int)*m_this->nvl.size()) );
 }
 
-ScenarioConnectomeStrategyCUDA::~ScenarioConnectomeStrategyCUDA()
+ScenarioConnectomeStrategyCUDANewton::~ScenarioConnectomeStrategyCUDANewton()
 {
 	CUDA_SAFE_CALL(	cudaFree(arr_prop.Dtau) );
 	CUDA_SAFE_CALL(	cudaFree(agent) );
@@ -46,7 +46,7 @@ ScenarioConnectomeStrategyCUDA::~ScenarioConnectomeStrategyCUDA()
 	CUDA_SAFE_CALL(	cudaFree(type) );
 }
 
-void ScenarioConnectomeStrategyCUDA::push()
+void ScenarioConnectomeStrategyCUDANewton::push()
 {
 	for(int a = 0; a < ndim; ++a)
 		CUDA_SAFE_CALL(	cudaMemcpy(arr_prop.Dtau+m_this->nall*a, m_this->arr_prop.Dtau[a].data(), m_this->nall*sizeof(double), cudaMemcpyHostToDevice) );
@@ -57,7 +57,7 @@ void ScenarioConnectomeStrategyCUDA::push()
 	CUDA_SAFE_CALL( cudaMemcpy(type, m_this->type.data(), m_this->nall*sizeof(int), cudaMemcpyHostToDevice) );
 }
 
-void ScenarioConnectomeStrategyCUDA::pop()
+void ScenarioConnectomeStrategyCUDANewton::pop()
 {
 	for(int a = 0; a < ScenarioConnectomeAgents::num_agents; ++a)
 	{
@@ -69,7 +69,7 @@ void ScenarioConnectomeStrategyCUDA::pop()
 using namespace ScenarioConnectomeAgents;
 
 /* ----------------------------------------------------------------------*/
-void ScenarioConnectomeStrategyCUDA::derivatives() {
+void ScenarioConnectomeStrategyCUDANewton::derivatives() {
 
 	static constexpr int BLOCK_DIM = 128;
   // set derivatives of all voxels to zero
@@ -98,7 +98,7 @@ static __device__ Coord find_coord(int i)
 }
 
 static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type,
-                                        const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
+                                        const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop,
                                         int nall, double dt, int step)
 {
   const int i = threadIdx.x + blockDim.x*blockIdx.x;
@@ -196,7 +196,7 @@ static __global__ void derivativeKernel(const double* agent, double* deriv, cons
 }
 
 /* ----------------------------------------------------------------------*/
-void ScenarioConnectomeStrategyCUDA::update() {
+void ScenarioConnectomeStrategyCUDANewton::update() {
 
   using namespace ScenarioConnectomeAgents;
 
@@ -206,7 +206,7 @@ void ScenarioConnectomeStrategyCUDA::update() {
 
 }
 
-static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall)
+static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop, double dt, int nall)
 {
 	const int i = threadIdx.x + blockDim.x*blockIdx.x;
 	//const int jj = blockIdx.y +1;

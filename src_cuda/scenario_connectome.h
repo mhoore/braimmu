@@ -74,7 +74,8 @@ class ScenarioConnectome : public VirtualBrain {
 	std::unique_ptr<ScenarioConnectomeAbstractStrategy> m_strategy;
 
 	friend class ScenarioConnectomeStrategyCPU;
-        friend class ScenarioConnectomeStrategyCUDA;
+  friend class ScenarioConnectomeStrategyCUDA;
+  friend class ScenarioConnectomeStrategyCUDANewton;
 };
 
 #endif

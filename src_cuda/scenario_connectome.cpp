@@ -4,6 +4,7 @@
 #include "ScenarioConnectomeAbstractStrategy.h"
 #include "ScenarioConnectomeStrategyCPU.h"
 #include "ScenarioConnectomeStrategyCUDA.h"
+#include "ScenarioConnectomeStrategyCUDANewton.h"
 
 using namespace std;
 
