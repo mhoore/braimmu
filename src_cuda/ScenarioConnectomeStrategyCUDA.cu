@@ -305,11 +305,8 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
 	//const int jj = blockIdx.y +1;
 	//const int kk = blockIdx.z +1;
   if(i < nall) {
-	{
-		const int height = nall/(nvl[0]+2);
-		i = i/height*pitch.pDouble + i%height;
-		nall = pitch.pDouble * height;
-	}
+	i = i/(nvl[0]+2)*pitch.pDouble + i%(nvl[0]+2);
+	nall = nall/(nvl[0]+2)*pitch.pDouble;
     
     if (type[i] & tissue(EMP)) return;
     
