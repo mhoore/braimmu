@@ -169,9 +169,9 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
   //derivativeKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
 }
 
-static __device__ int find_id(int i, int j, int k, int p = pitch.pDouble)
+static __device__ int find_id(int i, int j, int k)
 {
-	return i + (p) * (j + (nvl[1] + 2) * k);
+	return i + (pitch.pDouble) * (j + (nvl[1] + 2) * k);
 }
 
 static __device__ Coord find_coord(int i)
