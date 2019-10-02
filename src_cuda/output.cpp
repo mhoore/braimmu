@@ -614,6 +614,7 @@ void Output::dump_txt(VirtualBrain *brn, vector<string> arg) {
 /* ----------------------------------------------------------------------*/
 void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
+	std::cout << "Output::dump_mri" << std::endl;
   /// check the arguments
   tagint c = 3;
   while (c < arg.size()) {
@@ -735,6 +736,12 @@ void Output::dump_mri(VirtualBrain *brn, vector<string> arg) {
 
         tagint cnim = ii + nim->nx * ( jj + nim->ny * (kk + nim->nz * (aid-3) ) );
         int ag_id = brn->find_agent(arg[aid]);
+
+		const int tau = 6;
+		if((ag_id == tau) && (ii == 25) && (jj==93) && (kk==74))
+			std::cout << "value tau: " << ii << ',' << jj << ',' << kk << ':' << recv_buf[c] << ' ' << c << std::endl; 
+		if((ag_id == tau) && (ii == 74) && (jj==93) && (kk==25))
+			std::cout << "value tau: " << ii << ',' << jj << ',' << kk << ':' << recv_buf[c] << ' ' << c << std::endl;
 
         if (!arg[aid].compare("type"))
           data[cnim] = (float) ubuf(recv_buf[c++]).i;

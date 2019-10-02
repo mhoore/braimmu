@@ -660,6 +660,7 @@ void ScenarioConnectome::mri_topology(nifti_image *nim) {
 /* ----------------------------------------------------------------------*/
 int ScenarioConnectome::dump_specific(vector<string> arg) {
 
+	std::cout << "ScenarioConnectome::dump_specific" << std::endl;
   int dsize = 3;
   tagint c = 3;
   while (c < arg.size()) {

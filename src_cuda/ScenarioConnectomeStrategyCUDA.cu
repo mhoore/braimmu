@@ -118,6 +118,10 @@ void ScenarioConnectomeStrategyCUDA::push()
 
 void ScenarioConnectomeStrategyCUDA::pop()
 {
+	int a = m_this->find_id(26,94,75);
+	printf("before pop: agent[tau] %g %d\n", (float)m_this->agent[tau][a], 23);
+	printf("before pop: agent[tau] %g %d\n", m_this->agent[tau][a], 23);
+	std::cout << "before pop: agent[tau][25] " << m_this->agent[tau][a] << " " << a << std::endl;
 	const size_t width = this->nvx();
 	const size_t height = this->nvyz();
 	for(int a = 0; a < ScenarioConnectomeAgents::num_agents; ++a)
@@ -137,6 +141,8 @@ void ScenarioConnectomeStrategyCUDA::pop()
 				, cudaMemcpyDeviceToHost)
 			);
 	}
+
+	std::cout << "after pop: agent[tau][25] " << m_this->agent[tau][a] << " " << a << std::endl;
 }
 
 using namespace ScenarioConnectomeAgents;
@@ -173,13 +179,16 @@ static __device__ int find_id(int i, int j, int k)
 	return i + (pitch.pDouble) * (j + (nvl[1] + 2) * k);
 }
 
-static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
+static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int pnall,
 double dt, int step)
 {
 	const int ii = threadIdx.x + blockDim.x*blockIdx.x +1;
 	const int jj = blockIdx.y +1;
 	const int kk = blockIdx.z +1;
-	nall = pitch.pDouble * (nvl[1]+2)*(nvl[2]+2);
+	int nall = pitch.pDouble * (nvl[1]+2)*(nvl[2]+2);
+	if((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (blockIdx.z == 0))
+		/*printf("pitch: %d %d\n", (int)pitch.pDouble, (int)pitch.pInt);*/
+		printf("device agent[tau] %g\n", (float)agent[tau*nall + find_id(26,94,75)]);
 	if(ii < nvl[0]+1)
 	{
         const int i = find_id(ii,jj,kk);
@@ -302,14 +311,14 @@ void ScenarioConnectomeStrategyCUDA::update() {
 
 }
 
-static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall)
+static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int pnall)
 {
 	int i = threadIdx.x + blockDim.x*blockIdx.x;
 	//const int jj = blockIdx.y +1;
 	//const int kk = blockIdx.z +1;
-  if(i < nall) {
-	i = i/(nvl[0]+2)*pitch.pDouble + i%(nvl[0]+2);
-	nall = nall/(nvl[0]+2)*pitch.pDouble;
+  if(i < pnall) {
+	i = (i/(nvl[0]+2))*pitch.pDouble + i%(nvl[0]+2);
+	int nall = (pnall/(nvl[0]+2))*pitch.pDouble;
     
     if (type[i] & tissue(EMP)) return;
     
