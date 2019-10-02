@@ -2,6 +2,7 @@
 
 #include "ScenarioConnectomeAbstractStrategy.h"
 #include "ScenarioConnectomeStrategyCPU.h"
+#include "ScenarioConnectomeStrategyOMP.h"
 
 using namespace std;
 
@@ -27,7 +28,9 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
 
   if (strategy == "cpu")
     m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
-  else
+  else if (strategy == "OMP")
+    m_strategy.reset(new ScenarioConnectomeStrategyOMP(this));
+
   {
     printf("Unknown integration strategy: '%s'\n", strategy.c_str());
 	exit(1);

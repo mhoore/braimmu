@@ -70,10 +70,15 @@ class ScenarioConnectome : public VirtualBrain {
   } arr_prop;
 
   array<vector<double>, num_agents> agent, deriv;
+ // array<vector<vector<double>, 2,num_agents>> 2buff_deriv;
+
 
 	std::unique_ptr<ScenarioConnectomeAbstractStrategy> m_strategy;
 
 	friend class ScenarioConnectomeStrategyCPU;
+	friend class ScenarioConnectomeStrategyOMP;
+
+
 };
 
 #endif
