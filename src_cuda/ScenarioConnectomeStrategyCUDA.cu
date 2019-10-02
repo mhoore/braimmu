@@ -95,13 +95,13 @@ void ScenarioConnectomeStrategyCUDA::pop()
 
 using namespace ScenarioConnectomeAgents;
 
-static __global__ void zeroKernel(double* data, size_t n)
+/*static __global__ void zeroKernel(double* data, size_t n)
 {
 	int* tmp = (int*)data;
 	const int id = threadIdx.x + blockIdx.x*blockDim.x;
 	tmp[id] = 0;
 	tmp[id+n] = 0;
-}
+}*/
 
 /* ----------------------------------------------------------------------*/
 void ScenarioConnectomeStrategyCUDA::derivatives() {
