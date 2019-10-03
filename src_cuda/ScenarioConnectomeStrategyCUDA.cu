@@ -120,9 +120,6 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 		zeroKernel<<<n/BLOCK_DIM + (n%BLOCK_DIM>0), BLOCK_DIM>>>(deriv, n);
 	}
 #endif
-	CUDA_SAFE_CALL(
-		cudaMemsetAsync(deriv, 0, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall)
-	);
 
 	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
 	//derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
@@ -171,9 +168,9 @@ double dt, int step)
 
     // sAb, fAb, and tau efflux from CSF
     if (type[i] & tissue(CSF)) {
-      deriv[sAb * nall + i] -= prop.es * ag_sAb;
-      deriv[fAb * nall + i] -= prop.es * ag_fAb;
-      deriv[phr * nall + i] -= prop.ephi * ag_phr;
+      deriv[sAb * nall + i] = -prop.es * ag_sAb;
+      deriv[fAb * nall + i] = -prop.es * ag_fAb;
+      deriv[phr * nall + i] = -prop.ephi * ag_phr;
     }
 
     // in parenchyma (WM and GM)
@@ -182,24 +179,24 @@ double dt, int step)
                      + prop.kn * ag_sAb * ag_sAb;
 
       // sAb
-      deriv[sAb * nall + i] += agent[neu * nall + i] * agent[cir * nall + i]
+      deriv[sAb * nall + i] = agent[neu * nall + i] * agent[cir * nall + i]
                             - dum
                             - prop.ds * agent[mic * nall + i] * ag_sAb;
       // fAb
-      deriv[fAb * nall + i] += dum
+      deriv[fAb * nall + i] = dum
                             - prop.df * agent[mic * nall + i] * ag_fAb;
 
       dum = prop.ktau * ag_phr;
 
       // tau protein phosphorylation due to fAb and neu
-      deriv[phr * nall + i] += prop.kphi * ag_fAb * agent[neu * nall + i]
+      deriv[phr * nall + i] = prop.kphi * ag_fAb * agent[neu * nall + i]
                             - dum;
 
       // tau tangle formation from phosphorylated tau
-      deriv[tau * nall + i] += dum;
+      deriv[tau * nall + i] = dum;
 
       // neuronal death due to tau aggregation
-      deriv[neu * nall + i] -= prop.dnt * agent[tau * nall + i] * agent[neu * nall + i];
+      deriv[neu * nall + i] = -prop.dnt * agent[tau * nall + i] * agent[neu * nall + i];
 
       // astrogliosis
       dum = ag_fAb * agent[mic * nall + i];
@@ -211,6 +208,7 @@ double dt, int step)
                             * sin(prop.omega_cir * dt * step);
       }
 
+      double de_mic = 0.;
       #pragma unroll
 		  for(int s = -1; s <= 1; s+=2)
 			  for (int d=0; d < 3; d+=1) {
@@ -235,15 +233,16 @@ double dt, int step)
 				    const double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
 
 				    // migration of microglia toward higher sAb concentrations
-				    deriv[mic * nall + i] += prop.cs * del_sAb * agent[mic * nall + ((del_sAb > 0.0) ? j : i)];
+				    de_mic += prop.cs * del_sAb * agent[mic * nall + ((del_sAb > 0.0) ? j : i)];
 
 				    // migration of microglia toward higher fAb concentrations
-            deriv[mic * nall + i] += prop.cf * del_fAb * agent[mic * nall + ((del_fAb > 0.0) ? j : i)];
+            de_mic += prop.cf * del_fAb * agent[mic * nall + ((del_fAb > 0.0) ? j : i)];
 
 				    // diffusion of microglia
-				    deriv[mic * nall + i] -= prop.D_mic * del_mic;
+				    de_mic -= prop.D_mic * del_mic;
 		      }
 		    }
+		deriv[mic * nall + i] = de_mic;
 	  }
 }
 
