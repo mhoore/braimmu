@@ -3,7 +3,7 @@
 #include "ScenarioConnectomeAbstractStrategy.h"
 
 class ScenarioConnectomeStrategyCUDANewton
-	: public ScenarioConnectomeAbstractStrategy
+	: public ScenarioConnectomeStrategyCUDA
 {
 
   public:
@@ -19,12 +19,8 @@ class ScenarioConnectomeStrategyCUDANewton
 
 	public:
 
-		ScenarioConnectomeStrategyCUDANewton(ScenarioConnectome* pthis);
-		~ScenarioConnectomeStrategyCUDANewton() override;
+		using ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA;
 
-	void update() override;
-	void derivatives() override;
+    void derivatives() override;
 
-	void push() override;
-	void pop() override;
 };

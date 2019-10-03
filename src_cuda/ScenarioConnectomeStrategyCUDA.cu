@@ -268,3 +268,4 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
       agent[ag_id * nall + i] += deriv[ag_id * nall + i] * dt;
   }
 }
+
