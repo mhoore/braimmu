@@ -302,7 +302,8 @@ void ScenarioConnectomeStrategyCUDA::update() {
 
 	static constexpr int BLOCK_DIM = 128;
 	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-	updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);
+	const int nall = m_allocPitch.pDouble * (m_this->nvl[1]+2)*(m_this->nvl[2]+2);
+	updateKernel<<<nall/BLOCK_DIM + (nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, nall);
 
 }
 
@@ -311,9 +312,7 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
 	int i = threadIdx.x + blockDim.x*blockIdx.x;
 	//const int jj = blockIdx.y +1;
 	//const int kk = blockIdx.z +1;
-  if(i < nall) {
-	i = i/(nvl[0]+2)*pitch.pDouble + i%(nvl[0]+2);
-	nall = nall/(nvl[0]+2)*pitch.pDouble;
+  if(i < nall && (i%pitch.pDouble < nvl[0]+1)) {
     
     if (type[i] & tissue(EMP)) return;
     
