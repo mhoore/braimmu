@@ -20,18 +20,23 @@ void ScenarioConnectomeStrategyOMP::derivatives() {
 	auto &arr_prop = m_this->arr_prop;
 
   // set derivatives of all voxels to zero
-  #pragma omp parallel num_threads(4)
+  //#pragma omp parallel
+  #pragma omp parallel
+  {
   for (int ag_id=0; ag_id<num_agents; ag_id++)
     fill(deriv[ag_id].begin(), deriv[ag_id].end(), 0.);
    // fill(2buff_deriv[ag_id].begin(), odd_deriv[ag_id].end(), 0.);
-
+  }
   // spatial derivatives
   for (int p=0; p<2; p++)
+    #pragma omp parallel
+    { //printf("%d",omp_get_num_threads());
     #pragma omp for collapse(2)
     for (int kk=1; kk<nvl[2]+1; kk++)
       for (int jj=1; jj<nvl[1]+1; jj++)
-        //for (int ii=1; ii<nvl[0]+1; ii+2) {
-        for (int ii = (kk^jj^p)&1; ii<nvl[1]/2+1; ii+=2){
+        //f r (int ii=1; ii<nvl[0]+1; ii+2) {
+        for (int ii = (kk^jj^p)&1; ii<nvl[0]+1; ii+=2){
+          //cin >> ii;
           int i = m_this->find_id(ii,jj,kk);
           if (type[i] & tissue[EMP]) continue;
 
@@ -161,6 +166,7 @@ void ScenarioConnectomeStrategyOMP::derivatives() {
              deriv[sAb][i]= 2buff_deriv[sAb][0][i]+ 2buff_deriv[sAb][1][i]
              deriv[mic][i]= 2buff_deriv[mic][0][i]+ 2buff_deriv[mic][1][i]
              }*/
+           }
         }
   }
 
@@ -168,17 +174,20 @@ void ScenarioConnectomeStrategyOMP::derivatives() {
 void ScenarioConnectomeStrategyOMP::update() {
 
 	using namespace ScenarioConnectomeAgents;
-
+  #pragma omp parallel
+  {
   // update local voxels
-  for (int kk=1; kk<m_this->nvl[2]+1; kk++)
-    for (int jj=1; jj<m_this->nvl[1]+1; jj++)
-      for (int ii=1; ii<m_this->nvl[0]+1; ii++) {
-        int i = m_this->find_id(ii,jj,kk);
-        if (m_this->type[i] & m_this->tissue[EMP]) continue;
+  #pragma omp for collapse(2)
+  for (int ag_id=0; ag_id<num_agents; ag_id++) 
+    for (int kk=1; kk<m_this->nvl[2]+1; kk++)
+      for (int jj=1; jj<m_this->nvl[1]+1; jj++)
+        for (int ii=1; ii<m_this->nvl[0]+1; ii++) {
+          int i = m_this->find_id(ii,jj,kk);
+          if (m_this->type[i] & m_this->tissue[EMP]) continue;
 
-        // time integration (Euler's scheme)
-        for (int ag_id=0; ag_id<num_agents; ag_id++)
-          m_this->agent[ag_id][i] += m_this->deriv[ag_id][i] * m_this->dt;
+          // time integration (Euler's scheme)
+           m_this->agent[ag_id][i] += m_this->deriv[ag_id][i] * m_this->dt;
       }
 
+  }
 }
