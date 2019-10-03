@@ -138,9 +138,9 @@ static __device__ Coord find_coord(int i)
 {
   Coord coord;
   coord.x = i % (nvl[0] + 2);
-  int dumi = (int) ((i - coord.x) / (nvl[0] + 2));
-  coord.y = dumi % (nvl[1] + 2);
-  coord.z = (int) ((dumi - coord.y) / (nvl[1] + 2));
+  i /= (nvl[0] + 2);
+  coord.y = i % (nvl[1] + 2);
+  coord.z = i / (nvl[1] + 2);
   
   return coord;
 
