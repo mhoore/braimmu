@@ -18,4 +18,4 @@ if(CUDA_FOUND)
 endif(CUDA_FOUND)
 
 add_executable(braimmu ${BRAIMMU_SRCS})
-target_link_libraries(braimmu nifti)
+target_link_libraries(braimmu nifti ${MPI_CXX_LIBRARIES})
