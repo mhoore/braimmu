@@ -112,6 +112,9 @@ void ScenarioConnectomeStrategyCUDA::push()
 			);
 	}
 	CUDA_SAFE_CALL(
+		cudaMemsetAsync(type, 0, sizeof(int)*m_allocPitch.pInt*height)
+		);
+	CUDA_SAFE_CALL(
 		/*cudaMemcpy(type, m_this->type.data(), m_this->nall*sizeof(int), cudaMemcpyHostToDevice)*/
 		cudaMemcpy2D(type, m_allocPitch.pInt*sizeof(int)
 			, m_this->type.data(), width*sizeof(int), width*sizeof(int), height
