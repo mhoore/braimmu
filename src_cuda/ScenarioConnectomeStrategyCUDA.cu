@@ -213,8 +213,8 @@ double dt, int step)
   // !!inverse CSF check!!
   agent2[cir * nall + i] = agent[cir * nall + i] + dt* ((!(t & tissue(CSF)) && (prop.c_cir > 0))
     ? - prop.C_cir * prop.c_cir * prop.omega_cir
-      * sin(prop.omega_cir * dt * step))
-    : 0;
+      * sin(prop.omega_cir * dt * step)
+    : 0);
 
       double de_mic = 0.;
       #pragma unroll
@@ -235,7 +235,7 @@ double dt, int step)
 			    agent2[sAb * nall + i] -= prop.D_sAb * del_sAb *dt;
 
 			    // only in parenchyma
-			    if (type[i] & tissue(WM) || type[i] & tissue(GM))
+			    if (t & tissue(WM) || t & tissue(GM))
 				  if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
 				    const double del_fAb = ag_fAb - agent[fAb * nall + j];
 				    const double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
@@ -250,7 +250,7 @@ double dt, int step)
 				    de_mic -= prop.D_mic * del_mic;
 		      }
 		    }
-		agent2[mic * nall + i] = agent2[mic * nall + i] + de_mic *dt;
+		agent2[mic * nall + i] = agent[mic * nall + i] + de_mic *dt;
 	  }
 }
 
