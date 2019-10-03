@@ -1,8 +1,9 @@
 ## Input file: cuda with newton flux
 ## NOTE: if number of voxels is more than 2 bilions, change the TAGINT format to int64 in pointers.h
 
-partition 1 2 1 
+partition 1 1 1 
 num_conn_max 10 # maximum number of bond connections
+strategy OMP
 
 ## special for cuda
 newton_flux yes
@@ -63,8 +64,8 @@ read_mri rgb ../base/rgb.nii 0 255
 #balance y 20
 
 ## outputs
-dump mri 200 dump. mic neu sAb fAb ast phr tau type group
-statistics 200 stat.dat
+#dump mri 200 dump. mic neu sAb fAb ast phr tau type group
+#statistics 200 stat.dat
 
 log 20
 run 200
