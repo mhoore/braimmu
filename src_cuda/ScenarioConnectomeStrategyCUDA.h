@@ -14,7 +14,7 @@ class ScenarioConnectomeStrategyCUDA
   
   protected:
   array_properties arr_prop;
-  double *agent, *deriv;
+  double *agent, *agent2, *deriv;
   int *type;
 
 	public:

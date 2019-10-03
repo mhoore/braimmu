@@ -6,6 +6,8 @@
 
 #include <cuda.h>
 
+#include <algorithm>
+
 using namespace std;
 
 struct Coord {
@@ -22,7 +24,7 @@ static __device__ constexpr int tissue(int type)
 	return 1<<type;
 }
 
-static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
+static __global__ void derivativeKernel(const double* agent, double* agent2, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
 double dt, int step);
 
 static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall);
@@ -35,6 +37,9 @@ ScenarioConnectomeStrategyCUDA::ScenarioConnectomeStrategyCUDA(ScenarioConnectom
 		);
 	CUDA_SAFE_CALL(
 		cudaMalloc(&agent, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall)
+		);
+	CUDA_SAFE_CALL(
+		cudaMalloc(&agent2, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall)
 		);
 	CUDA_SAFE_CALL(
 		cudaMalloc(&deriv, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall)
@@ -58,6 +63,9 @@ ScenarioConnectomeStrategyCUDA::~ScenarioConnectomeStrategyCUDA()
 		);
 	CUDA_SAFE_CALL(
 		cudaFree(agent)
+		);
+	CUDA_SAFE_CALL(
+		cudaFree(agent2)
 		);
 	CUDA_SAFE_CALL(
 		cudaFree(deriv)
@@ -123,7 +131,8 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 
 	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
 	//derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
-  derivativeKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
+  derivativeKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, agent2, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
+  std::swap(agent, agent2);
 }
 
 static __device__ int find_id(int i, int j, int k)
@@ -143,7 +152,7 @@ static __device__ Coord find_coord(int i)
 
 }
 
-static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
+static __global__ void derivativeKernel(const double* agent, double* agent2, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
 double dt, int step)
 {
   const int i = threadIdx.x + blockDim.x*blockIdx.x;
