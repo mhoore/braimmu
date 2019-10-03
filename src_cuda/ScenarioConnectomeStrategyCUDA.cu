@@ -217,6 +217,7 @@ double dt, int step)
     : 0);
 
       double de_mic = 0.;
+      const double ag_mic = agent[mic * nall + i];
       #pragma unroll
 		  for(int s = -1; s <= 1; s+=2)
 			  for (int d=0; d < 3; d+=1) {
@@ -238,19 +239,19 @@ double dt, int step)
 			    if (t & tissue(WM) || t & tissue(GM))
 				  if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
 				    const double del_fAb = ag_fAb - agent[fAb * nall + j];
-				    const double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
+				    const double del_mic = ag_mic - agent[mic * nall + j];
 
 				    // migration of microglia toward higher sAb concentrations
-				    de_mic += prop.cs * del_sAb * agent[mic * nall + ((del_sAb > 0.0) ? j : i)];
+				    de_mic += prop.cs * del_sAb * ((del_sAb > 0.0) ? agent[mic * nall + j] : ag_mic);
 
 				    // migration of microglia toward higher fAb concentrations
-            de_mic += prop.cf * del_fAb * agent[mic * nall + ((del_fAb > 0.0) ? j : i)];
+            de_mic += prop.cf * del_fAb * ((del_fAb > 0.0) ? agent[mic * nall + j] : ag_mic);
 
 				    // diffusion of microglia
 				    de_mic -= prop.D_mic * del_mic;
 		      }
 		    }
-		agent2[mic * nall + i] = agent[mic * nall + i] + de_mic *dt;
+		agent2[mic * nall + i] = ag_mic + de_mic *dt;
 	  }
 }
 
