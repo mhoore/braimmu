@@ -8,7 +8,7 @@
 #include <cuda.h>
 
 static __global__ void derivativeKernelNewton(const double* agent, double* deriv, const int* type,
-                                        const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop,
+                                        const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
                                         int nall, double dt, int step, int parity);
 
 /* ----------------------------------------------------------------------*/
@@ -32,7 +32,7 @@ static __device__ int findParity(Coord coord)
 }
 
 static __global__ void derivativeKernelNewton(const double* agent, double* deriv, const int* type,
-                                        const ScenarioConnectomeStrategyCUDANewton::array_properties arr_prop,
+                                        const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
                                         int nall, double dt, int step, int parity)
 {
   const int i = threadIdx.x + blockDim.x*blockIdx.x;
@@ -81,7 +81,44 @@ static __global__ void derivativeKernelNewton(const double* agent, double* deriv
       dum = agent[fAb * nall + i] * agent[mic * nall + i];
       deriv[ast * nall + i] = prop.ka * (dum / (dum + prop.Ha) - agent[ast * nall + i]);
 
+      // circadian rhythm
+      if (prop.c_cir > 0)
+        deriv[cir * nall + i] = - prop.C_cir * prop.c_cir * prop.omega_cir
+                            * sin(prop.omega_cir * dt * step);
+      }
+
+      #pragma unroll
+		  for(int s = -1; s <= 1; s+=2)
+			  for (int d=0; d < 3; d+=1) {
+			    const int j = find_id(coord.x +s*(d==0),coord.y +s*(d==1),coord.z +s*(d==2));
+
+			    if (type[j] & tissue(EMP)) continue;
+
+			    double del_phr = agent[phr * nall + i] - agent[phr * nall + j];
+
+			    // diffusion of tau
+			    deriv[phr * nall + i] -= 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
+
+			    double del_sAb = agent[sAb * nall + i] - agent[sAb * nall + j];
+
+			    // diffusion of sAb
+			    deriv[sAb * nall + i] -= prop.D_sAb * del_sAb;
+
+			    // only in parenchyma
+			    if (type[i] & tissue(WM) || type[i] & tissue(GM))
+				  if (type[j] & tissue(WM) || type[j] & tissue(GM)) {
+				    double del_fAb = agent[fAb * nall + i] - agent[fAb * nall + j];
+				    double del_mic = agent[mic * nall + i] - agent[mic * nall + j];
+
+				    // migration of microglia toward higher sAb concentrations
+				    deriv[mic * nall + i] += prop.cs * del_sAb * agent[mic * nall + ((del_sAb > 0.0) ? j : i)];
+
+				    // migration of microglia toward higher fAb concentrations
+            deriv[mic * nall + i] += prop.cf * del_fAb * agent[mic * nall + ((del_fAb > 0.0) ? j : i)];
+
+				    // diffusion of microglia
+				    deriv[mic * nall + i] -= prop.D_mic * del_mic;
+		      }
     }
   }
 }
-

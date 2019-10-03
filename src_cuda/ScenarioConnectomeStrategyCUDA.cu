@@ -269,3 +269,4 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
   }
 }
 
+#include "ScenarioConnectomeStrategyCUDANewton.cu"
