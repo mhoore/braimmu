@@ -259,7 +259,7 @@ static __global__ void derivativeKernel(const double* agent, double* agent2,
       #pragma unroll
 		  for(int s = -1; s <= 1; s+=2)
 			  for (int d=0; d < 3; d+=1) {
-			    const int j = find_id(coord.x +s*(d==0),coord.y +s*(d==1),coord.z +s*(d==2));
+			    const int j = find_id(ii +s*(d==0),jj +s*(d==1),kk +s*(d==2));
 
 			    if (type[j] & tissue(EMP)) continue;
 
