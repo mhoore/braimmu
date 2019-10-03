@@ -187,12 +187,16 @@ double dt, int step)
 	const int kk = blockIdx.z +1;
 	int nall = pitch.pDouble * (nvl[1]+2)*(nvl[2]+2);
 	if((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (blockIdx.z == 0))
+	{
 		/*printf("pitch: %d %d\n", (int)pitch.pDouble, (int)pitch.pInt);*/
-		printf("device agent[tau] %g\n", (float)agent[tau*nall + find_id(26,94,75)]);
+		const int i = find_id(26,94,75);
+		printf("device agent[tau] %g, %d, %d\n", (float)agent[tau*nall + i], i, nall);
+	}
 	if(ii < nvl[0]+1)
 	{
         const int i = find_id(ii,jj,kk);
-        if (type[i] & tissue(EMP)) return;
+        if (!(type[i] & tissue(EMP)))
+		{
 
         // direct function or time derivatives
 
@@ -297,6 +301,13 @@ double dt, int step)
 		  }
 		}
 		}
+		}
+	}
+	if((threadIdx.x == 0) && (blockIdx.x == 0) && (blockIdx.y == 0) && (blockIdx.z == 0))
+	{
+		/*printf("pitch: %d %d\n", (int)pitch.pDouble, (int)pitch.pInt);*/
+		const int i = find_id(26,94,75);
+		printf("device deriv[tau] %g, %d, %d\n", (float)deriv[tau*nall + i], i, nall);
 	}
 }
 
@@ -307,18 +318,50 @@ void ScenarioConnectomeStrategyCUDA::update() {
 
 	static constexpr int BLOCK_DIM = 128;
 	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-	updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);
+	/*updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);*/
+	const int nall = m_allocPitch.pDouble * (m_this->nvl[1]+2)*(m_this->nvl[2]+2);
+	updateKernel<<<nall/BLOCK_DIM + (nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, nall);
 
 }
 
 static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int pnall)
 {
 	int i = threadIdx.x + blockDim.x*blockIdx.x;
+  if(i < pnall) {
+    if (type[i] & tissue(EMP)) return;
+    
+    // time integration (Euler's scheme)
+    for (int ag_id=0; ag_id<ScenarioConnectomeAgents::num_agents; ag_id++)
+      agent[ag_id * pnall + i] += deriv[ag_id * pnall + i] * dt;
+  }
+#if 0
 	//const int jj = blockIdx.y +1;
 	//const int kk = blockIdx.z +1;
+	{
+		int kk = i;
+		int ii = kk%(nvl[0]+2);
+		kk /= (nvl[0]+2);
+		int jj = kk%(nvl[1]+2);
+		kk /= (nvl[1]+2);
+		if(ii == 26 && jj == 94 && kk==75)
+		{
+			const int a = find_id(ii,jj,kk);
+			printf("device update agent[tau] %g %d (logic) %d, %d\n", (float)agent[tau*pitch.pDouble * (nvl[1]+2)*(nvl[2]+2) +a ], a, i, pnall);
+		}
+	}
   if(i < pnall) {
 	i = (i/(nvl[0]+2))*pitch.pDouble + i%(nvl[0]+2);
 	int nall = (pnall/(nvl[0]+2))*pitch.pDouble;
+
+	{
+		int kk = i;
+		int ii = kk%pitch.pDouble;
+		kk /= pitch.pDouble;
+		int jj = kk%(nvl[1]+2);
+		kk /= (nvl[1]+2);
+		if(ii == 26 && jj == 94 && kk==75)
+			printf("device update agent[tau] %g, %d, %d, %d\n", (float)agent[tau*nall + i], i, (int)(threadIdx.x + blockDim.x*blockIdx.x), nall);
+	}
     
     if (type[i] & tissue(EMP)) return;
     
@@ -326,4 +369,5 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
     for (int ag_id=0; ag_id<ScenarioConnectomeAgents::num_agents; ag_id++)
       agent[ag_id * nall + i] += deriv[ag_id * nall + i] * dt;
   }
+#endif
 }
