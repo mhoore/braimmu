@@ -259,7 +259,10 @@ static __global__ void updateKernel(double* agent, const double* deriv, const in
 	const int i = threadIdx.x + blockDim.x*blockIdx.x;
 	//const int jj = blockIdx.y +1;
 	//const int kk = blockIdx.z +1;
-  if(i < nall) {
+  Coord coord = find_coord(i);
+  if (coord.x > 0 && coord.x <= nvl[0]
+   && coord.y > 0 && coord.y <= nvl[1]
+   && coord.z > 0 && coord.z <= nvl[2]) {
     
     if (type[i] & tissue(EMP)) return;
     
