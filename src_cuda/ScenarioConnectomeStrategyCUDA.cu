@@ -106,6 +106,9 @@ void ScenarioConnectomeStrategyCUDA::push()
 			);
 	}
 	CUDA_SAFE_CALL(
+		cudaMemsetAsync(type, 0, sizeof(int)*m_allocPitch.pInt*height)
+		);
+	CUDA_SAFE_CALL(
 		/*cudaMemcpy(type, m_this->type.data(), m_this->nall*sizeof(int), cudaMemcpyHostToDevice)*/
 		cudaMemcpy2D(type, m_allocPitch.pInt*sizeof(int)
 			, m_this->type.data(), width*sizeof(int), width*sizeof(int), height
@@ -158,7 +161,7 @@ void ScenarioConnectomeStrategyCUDA::derivatives() {
 	}
 #endif
 	CUDA_SAFE_CALL(
-		cudaMemsetAsync(deriv, 0, ScenarioConnectomeAgents::num_agents*sizeof(double)*nvx()*nvyz())
+		cudaMemsetAsync(deriv, 0, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_allocPitch.pDouble*nvyz())
 	);
 
 	const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
