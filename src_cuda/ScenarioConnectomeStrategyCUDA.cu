@@ -176,11 +176,11 @@ static __device__ int find_id(int i, int j, int k)
 static __global__ void derivativeKernel(const double* agent, double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, int nall,
 double dt, int step)
 {
-	const int ii = threadIdx.x + blockDim.x*blockIdx.x +1;
+	const int ii = threadIdx.x + blockDim.x*blockIdx.x;
 	const int jj = blockIdx.y +1;
 	const int kk = blockIdx.z +1;
 	nall = pitch.pDouble * (nvl[1]+2)*(nvl[2]+2);
-	if(ii < nvl[0]+1)
+	if(ii > 0 && ii < nvl[0]+1)
 	{
         const int i = find_id(ii,jj,kk);
         if (type[i] & tissue(EMP)) return;
