@@ -18,30 +18,33 @@ void ScenarioConnectomeStrategyCUDANewton::derivatives() {
   // set derivatives of all voxels to zero
   CUDA_SAFE_CALL( cudaMemsetAsync(deriv, 0, ScenarioConnectomeAgents::num_agents*sizeof(double)*m_this->nall) );
 
-  //const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-  //derivativeKernel<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step);
-  derivativeKernelNewton<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 0);
-  derivativeKernelNewton<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 1);
+  const dim3 blocks(m_this->nvl[0]/2/BLOCK_DIM + ((m_this->nvl[0]/2)%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
+  derivativeKernelNewton<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 0);
+  derivativeKernelNewton<<<blocks, BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 1);
+  //derivativeKernelNewton<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 0);
+  //derivativeKernelNewton<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop, m_this->nall,m_this->dt, m_this->step, 1);
 }
 
 static __device__ int findParity(Coord coord)
 {
   return (int) ( (coord.z ^ coord.y ^ (coord.x % 2) ) & 1 );
-  //printf("%i %i %i %i \n", coord.z, coord.y, coord.x, par);
-  //return par;
 }
 
 static __global__ void derivativeKernelNewton(const double* agent, double* deriv, const int* type,
                                         const ScenarioConnectomeStrategyCUDA::array_properties arr_prop,
                                         int nall, double dt, int step, int parity)
 {
-  const int i = threadIdx.x + blockDim.x*blockIdx.x;
- 
-  if(i < nall) {
+  Coord coord;
 
-    Coord coord = find_coord(i);
+  coord.x = threadIdx.x + blockDim.x*blockIdx.x;
+  coord.y = blockIdx.y +1;
+  coord.z = blockIdx.z +1;
 
-    if (!(parity == findParity(coord))) return;
+  // choose the right parity
+  coord.x = ((coord.z ^ coord.y ^ parity) & 1) + 2 * coord.x;
+
+  if(coord.x < nvl[0]+1) {
+    const int i = find_id(coord.x,coord.y,coord.z);
 
     if (type[i] & tissue(EMP)) return;
 
