@@ -151,7 +151,8 @@ double dt, int step)
  
   if(i < nall) {
 
-    if (type[i] & tissue(EMP)) return;
+	const int t = type[i];
+    if (t & tissue(EMP)) return;
 
   //const int ii = threadIdx.x + blockDim.x*blockIdx.x +1;
   //const int jj = blockIdx.y +1;
@@ -166,47 +167,45 @@ double dt, int step)
 	const auto ag_fAb = agent[fAb * nall + i];
 	const auto ag_phr = agent[phr * nall + i];
 
+  double dum = prop.kp * ag_sAb * ag_fAb
+				 + prop.kn * ag_sAb * ag_sAb;
+
+  agent2[sAb * nall + i] = ag_sAb + dt* ((t & tissue(CSF))
     // sAb, fAb, and tau efflux from CSF
-    if (type[i] & tissue(CSF)) {
-      deriv[sAb * nall + i] = -prop.es * ag_sAb;
-      deriv[fAb * nall + i] = -prop.es * ag_fAb;
-      deriv[phr * nall + i] = -prop.ephi * ag_phr;
-    }
-
+    ? -prop.es * ag_sAb
     // in parenchyma (WM and GM)
-    else {
-      double dum = prop.kp * ag_sAb * ag_fAb
-                     + prop.kn * ag_sAb * ag_sAb;
+     : agent[neu * nall + i] * agent[cir * nall + i]
+      - dum
+      - prop.ds * agent[mic * nall + i] * ag_sAb);
 
-      // sAb
-      deriv[sAb * nall + i] = agent[neu * nall + i] * agent[cir * nall + i]
-                            - dum
-                            - prop.ds * agent[mic * nall + i] * ag_sAb;
-      // fAb
-      deriv[fAb * nall + i] = dum
-                            - prop.df * agent[mic * nall + i] * ag_fAb;
+  agent2[fAb * nall + i] = ag_fAb + dt* ((t & tissue(CSF))
+    ? -prop.es * ag_fAb
+    : dum
+      - prop.df * agent[mic * nall + i] * ag_fAb);
 
-      dum = prop.ktau * ag_phr;
+  dum = prop.ktau * ag_phr;
+  // tau protein phosphorylation due to fAb and neu
+  agent2[phr * nall + i] = ag_phr + dt* ((t & tissue(CSF))
+    ? -prop.ephi * ag_phr
+    : prop.kphi * ag_fAb * agent[neu * nall + i]
+      - dum);
 
-      // tau protein phosphorylation due to fAb and neu
-      deriv[phr * nall + i] = prop.kphi * ag_fAb * agent[neu * nall + i]
-                            - dum;
+  // tau tangle formation from phosphorylated tau
+  agent2[tau * nall + i] = agent[tau * nall + i] + dt* ((t & tissue(CSF)) ? 0 : dum) ;
 
-      // tau tangle formation from phosphorylated tau
-      deriv[tau * nall + i] = dum;
+  // neuronal death due to tau aggregation
+  agent2[neu * nall + i] = agent[neu * nall + i] + dt* ((t & tissue(CSF)) ? 0 : -prop.dnt * agent[tau * nall + i] * agent[neu * nall + i]);
 
-      // neuronal death due to tau aggregation
-      deriv[neu * nall + i] = -prop.dnt * agent[tau * nall + i] * agent[neu * nall + i];
+  // astrogliosis
+  dum = ag_fAb * agent[mic * nall + i];
+  agent2[ast * nall + i] = agent[ast * nall + i] + dt* ((t & tissue(CSF)) ? 0 : prop.ka * (dum / (dum + prop.Ha) - agent[ast * nall + i]));
 
-      // astrogliosis
-      dum = ag_fAb * agent[mic * nall + i];
-      deriv[ast * nall + i] = prop.ka * (dum / (dum + prop.Ha) - agent[ast * nall + i]);
-
-      // circadian rhythm
-      if (prop.c_cir > 0)
-        deriv[cir * nall + i] = - prop.C_cir * prop.c_cir * prop.omega_cir
-                            * sin(prop.omega_cir * dt * step);
-      }
+  // circadian rhythm
+  // !!inverse CSF check!!
+  agent2[cir * nall + i] = agent[cir * nall + i] + dt* ((!(t & tissue(CSF)) && (prop.c_cir > 0))
+    ? - prop.C_cir * prop.c_cir * prop.omega_cir
+      * sin(prop.omega_cir * dt * step))
+    : 0;
 
       double de_mic = 0.;
       #pragma unroll
@@ -219,12 +218,12 @@ double dt, int step)
 			    const double del_phr = ag_phr - agent[phr * nall + j];
 
 			    // diffusion of tau
-			    deriv[phr * nall + i] -= 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr;
+			    agent2[phr * nall + i] -= 0.5 * (arr_prop.Dtau[ nall * d + i] + arr_prop.Dtau[nall * d + j]) * del_phr *dt;
 
 			    const double del_sAb = ag_sAb - agent[sAb * nall + j];
 
 			    // diffusion of sAb
-			    deriv[sAb * nall + i] -= prop.D_sAb * del_sAb;
+			    agent2[sAb * nall + i] -= prop.D_sAb * del_sAb *dt;
 
 			    // only in parenchyma
 			    if (type[i] & tissue(WM) || type[i] & tissue(GM))
@@ -242,7 +241,7 @@ double dt, int step)
 				    de_mic -= prop.D_mic * del_mic;
 		      }
 		    }
-		deriv[mic * nall + i] = de_mic;
+		agent2[mic * nall + i] = agent2[mic * nall + i] + de_mic *dt;
 	  }
 }
 
@@ -253,7 +252,7 @@ void ScenarioConnectomeStrategyCUDA::update() {
 
 	static constexpr int BLOCK_DIM = 128;
 	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-	updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);
+	/*updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);*/
 
 }
 
