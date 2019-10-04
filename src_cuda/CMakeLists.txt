@@ -8,6 +8,7 @@ set(BRAIMMU_SRCS
   scenario_connectome.cpp
   ScenarioConnectomeStrategyCPU.cpp
   scenario_geometry.cpp
+  ScenarioConnectomeStrategyOMP.cpp
 )
 
 if(CUDA_FOUND)
