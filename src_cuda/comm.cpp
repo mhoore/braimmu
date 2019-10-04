@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include "virtualbrain.h"
 #include "comm.h"
 

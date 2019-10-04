@@ -1,8 +1,13 @@
+#include <mpi.h>
 #include "scenario_connectome.h"
 
 #include "ScenarioConnectomeAbstractStrategy.h"
 #include "ScenarioConnectomeStrategyCPU.h"
 #include "ScenarioConnectomeStrategyOMP.h"
+#ifdef WITH_CUDA
+#include "ScenarioConnectomeStrategyCUDA.h"
+#include "ScenarioConnectomeStrategyCUDANewton.h"
+#endif
 
 using namespace std;
 
@@ -30,6 +35,14 @@ ScenarioConnectome::ScenarioConnectome(int narg, char** arg, int rk, int np) {
     m_strategy.reset(new ScenarioConnectomeStrategyCPU(this));
   else if (strategy == "OMP")
     m_strategy.reset(new ScenarioConnectomeStrategyOMP(this));
+#ifdef WITH_CUDA
+  else if (strategy == "cuda") {
+    if (!newton_flux)
+      m_strategy.reset(new ScenarioConnectomeStrategyCUDA(this));
+    else
+      m_strategy.reset(new ScenarioConnectomeStrategyCUDANewton(this));
+  }
+#endif
   else
   {
     printf("Unknown integration strategy: '%s'\n", strategy.c_str());
@@ -174,6 +187,7 @@ void ScenarioConnectome::integrate(int Nrun) {
   N0 = N1 = 0;
 
   int iter = 0;
+	m_strategy->push();
   while (iter < Nrun) {
 
     comm->forward_comm(this);
@@ -189,13 +203,10 @@ void ScenarioConnectome::integrate(int Nrun) {
     step++;
     iter++;
 
-    if (output->do_dump)
-      output->dump(this);
-    if (output->severy > 0)
-      output->statistics(this);
-
     if (step % Nlog == 0) {
+      m_strategy->pop();
       MPI_Barrier(world);
+
       double t2 = MPI_Wtime();
       if (!me) {
         double speed = float(Nlog)/(t2-t1);
@@ -214,9 +225,16 @@ void ScenarioConnectome::integrate(int Nrun) {
         sig0 = sig1;
 
         printf(buf);
-
       }
+
       t1 = t2;
+    }
+
+    if (!(iter % output->severy)) {
+      m_strategy->pop();
+      if (output->do_dump)
+        output->dump(this);
+      output->statistics(this);
     }
 
   }
@@ -239,6 +257,7 @@ void ScenarioConnectome::integrate(int Nrun) {
     logfile.close();
   }
 
+	m_strategy->pop();
 }
 
 /* ----------------------------------------------------------------------*/

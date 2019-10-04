@@ -1,6 +1,7 @@
 #ifndef VIRTUALBRAIN_H
 #define VIRTUALBRAIN_H
 
+#include <mpi.h>
 #include "pointers.h"
 #include "init.h"
 #include "comm.h"

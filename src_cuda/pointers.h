@@ -1,7 +1,6 @@
 #ifndef POINTERS_H
 #define POINTERS_H
 
-#include <mpi.h>
 #include <cmath>
 #include <vector>
 

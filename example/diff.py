@@ -2,7 +2,6 @@ import matplotlib
 #matplotlib.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
 import numpy as np
 import matplotlib.pyplot as pl
-from mpl_toolkits.mplot3d import axes3d
 from math import sqrt, floor, pi
 from matplotlib import rc, rcParams, cm
 from matplotlib.ticker import MultipleLocator
@@ -98,6 +97,7 @@ def main():
     
     Nx[0], Nx[1], Nx[2], dum, Nx[3] = data.shape
     print(data.shape)
+    # print(data[sec[0],sec[1],sec[2],0,:])
     
     # dimensions
     diff = np.sum(np.abs(data[:,:,:,0,:-1]-data0[:,:,:,0,:-1]), axis=(0,1,2))
