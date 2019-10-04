@@ -72,17 +72,24 @@ def main():
     '''
  
     # read data frame 2
-    df = pd.read_csv('benchmarkOMP.out', sep=' ', comment='#')
+    df1 = pd.read_csv('benchmarkOMP.out', sep=' ', comment='#')
+    df2 = pd.read_csv('benchmarkOMP+MPI.out', sep=' ', comment='#')
 
     ax = fig.add_axes([0.55, 0.2, 0.4, 0.7], facecolor=(1.,1.,1.))
 
-    data_c = df[df.method == 'OMP']
-    coef = 1.0 / data_c.mu[0]
+    data_c1 = df1[df1.method == 'OMP']
+    data_c2 = df2[df2.method == 'OMP']
+
+    coef1 = 1.0 / data_c1.mu[0]
+    coef2 = 1.0 / data_c2.mu[0]
+
 
     #data_cn = df[df.method == 'cuda_newton']
     #data_n = df[df.method == 'run']
     
-    ax.errorbar(data_c.omp_threads,data_c.mu * coef, yerr = data_c.sig * coef, markersize = 6, linestyle='', marker='s', color='r',label=r'$\rm vec$')
+    ax.errorbar(data_c1.omp_threads,data_c1.mu * coef1, yerr = data_c1.sig * coef1, markersize = 6, linestyle='', marker='s', color='r',label=r'$\rm OMP$')
+    ax.errorbar(data_c2.omp_threads,data_c2.mu * coef2, yerr = data_c2.sig * coef2, markersize = 6, linestyle='', marker='s', color='g',label=r'$\rm OMP+MPI$')
+ 
     #ax.errorbar(data_cn.ncore,data_cn.mu * coef, yerr = data_cn.sig * coef, markersize = 6, linestyle='', marker='^', color='g',label=r'$\rm vec/Newt$')
     #ax.errorbar(data_n.ncore,data_n.mu * coef, yerr = data_n.sig * coef, markersize = 6, linestyle='', marker='o', color='b',label=r'$\rm orig$')
     ax.legend(loc='lower right', fontsize=16, ncol=1)
@@ -92,9 +99,9 @@ def main():
     ax.set_ylim(0.9,5.5)
     ax.set_yticks([])
     ax.yaxis.set_minor_locator(mly)
-    ax.set_title(r'${\rm With OMP}$',fontsize=20)
+   # ax.set_title(r'${\rm With OMP}$',fontsize=20)
     
-    pl.savefig("benchmarkOMP.png", format = 'png', dpi=200, orientation='landscape')
+    pl.savefig("benchmarkOMP+MPI.png", format = 'png', dpi=200, orientation='landscape')
     pl.show()
     #sys.stdin.read(1)
     pl.close()

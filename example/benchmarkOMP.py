@@ -38,8 +38,20 @@ def replace(file_path, line_tit, subst):
     remove(file_path)
     #Move new file
     move(abs_path, file_path)
-Nproc = ( ( 1, 1, 1, 1))
-Nthread = (1, 2, 4, 8, 12, 16, 20, 24)
+#Nproc = ( ( 1, 1, 1, 1))
+Nproc = ( ( 1, 1,  1, 1),
+          ( 2, 1,  2, 1),
+          ( 4, 1,  4, 1),
+          ( 6, 1,  6, 1),
+          ( 8, 1,  8, 1),
+          (10, 1, 10, 1),
+          (12, 2,  6, 1),
+          ( 2, 2,  1, 1),
+          ( 4, 2,  2, 1),
+          ( 8, 2,  4, 1) )
+
+#Nthread = (1, 2, 4, 8, 12, 16, 20, 24)
+Nthread =2
 method = ('OMP', )
 exes = ('../src_cuda/braimmu.exe', )
 
@@ -50,7 +62,7 @@ def main():
     mu_speed = np.zeros((len(Nproc),len(method)),dtype=np.float32)
     sig_speed = np.zeros((len(Nproc),len(method)),dtype=np.float32)
 
-    fwname = 'benchmark.out'
+    fwname = 'benchmarkOMP+MPI.out'
     fw = open(fwname, 'w')
     fw.write('# benchmark results \n')
     line = 'omp_threads ncore nx ny nz method mu sig\n'
@@ -60,7 +72,7 @@ def main():
    
     for sim in range(len(method)):
         for it in range(len(Nproc)):
-            for j in range (len(Nthread)):
+           # for j in range (len(Nthread)):
                ncore, nx, ny, nz = Nproc[it]
             
                subst = 'partition %i %i %i \n' % (nx,ny,nz)
@@ -72,7 +84,7 @@ def main():
                print(ncore, nx,ny,nz, method[sim])
             
             #command = 'mpirun -use-hwthread-cpus -np %i %s %s' % (ncore, exes[sim], fname)
-               command = 'export OMP_NUM_THREADS=%i; srun -u -n %i %s connectome %s' % (Nthread[j], ncore, exes[sim], fname)
+               command = 'export OMP_NUM_THREADS=%i; srun -u -n %i %s connectome %s' % (Nthread, ncore, exes[sim], fname)
                print(command)
                p = subprocess.Popen(command, stdout=subprocess.PIPE, shell=True)
                p.wait()
@@ -90,7 +102,7 @@ def main():
                print(mu_speed[it,sim], sig_speed[it,sim])
             
                fw = open(fwname, 'a')
-               line = '%i %i %i %i %i %s %g %g\n' % (Nthread[j],ncore,nx,ny,nz,method[sim],mu_speed[it,sim],sig_speed[it,sim])
+               line = '%i %i %i %i %i %s %g %g\n' % (Nthread,ncore,nx,ny,nz,method[sim],mu_speed[it,sim],sig_speed[it,sim])
                fw.write(line)
                fw.close()
 
