@@ -251,28 +251,4 @@ static __global__ void derivativeKernel(const double* agent, double* agent2,
 	  }
 }
 
-/* ----------------------------------------------------------------------*/
-void ScenarioConnectomeStrategyCUDA::update() {
-
-  using namespace ScenarioConnectomeAgents;
-
-	static constexpr int BLOCK_DIM = 128;
-	//const dim3 blocks(m_this->nvl[0]/BLOCK_DIM + (m_this->nvl[0]%BLOCK_DIM>0), m_this->nvl[1], m_this->nvl[2]);
-	/*updateKernel<<<m_this->nall/BLOCK_DIM + (m_this->nall%BLOCK_DIM>0), BLOCK_DIM>>>(agent, deriv, type, arr_prop,m_this->dt, m_this->nall);*/
-
-}
-
-static __global__ void updateKernel(double* agent, const double* deriv, const int* type, const ScenarioConnectomeStrategyCUDA::array_properties arr_prop, double dt, int nall)
-{
-	const int i = threadIdx.x + blockDim.x*blockIdx.x;
-	//const int jj = blockIdx.y +1;
-	//const int kk = blockIdx.z +1;
-  if(i < nall) {
-    
-    if (type[i] & tissue(EMP)) return;
-    
-    // time integration (Euler's scheme)
-    for (int ag_id=0; ag_id<ScenarioConnectomeAgents::num_agents; ag_id++)
-      agent[ag_id * nall + i] += deriv[ag_id * nall + i] * dt;
-  }
-}
+#include "ScenarioConnectomeStrategyCUDANewton.cu"

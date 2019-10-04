@@ -22,7 +22,7 @@ class ScenarioConnectomeStrategyCUDA
 		ScenarioConnectomeStrategyCUDA(ScenarioConnectome* pthis);
 		~ScenarioConnectomeStrategyCUDA() override;
 
-	void update() override;
+	void update() override {}
 	void derivatives() override;
 
 	void push() override;
